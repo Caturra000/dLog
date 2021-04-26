@@ -1,5 +1,5 @@
 #include <bits/stdc++.h>
-
+#include "table.h"
 // test-version
 
 namespace dlog {
@@ -128,7 +128,7 @@ struct Scheduler {
         // parse T locally without lock
         // ...
         char tmp[1<<10 /*StreamTraitis<T>::size*/];
-        // Stream::serialize(tmp, msg, length);
+        // Stream::parse(tmp, msg, length);
 
         {
             std::lock_guard<std::mutex> lk{rmtx};
@@ -153,18 +153,131 @@ struct Scheduler {
     
 };
 
+template <size_t N = 1024> struct StreamTraitisBase { static constexpr size_t size = N; };
+template <typename T> struct StreamTraits: public StreamTraitisBase<> {};
+template <> struct StreamTraits<int>: public StreamTraitisBase<12> {}; // std::log10(INT_MAX)+1 + 1
+template <> struct StreamTraits<long>: public StreamTraitisBase<21> {};
+template <> struct StreamTraits<double>: public StreamTraitisBase<42> {};
+template <> struct StreamTraits<char>: public StreamTraitisBase<3> {};
+template <size_t N> struct StreamTraits<const char(&)[N]>: public StreamTraitisBase<N> {};
+
+
 template <typename T>
 struct ExtraStream;
 
 struct Stream {
     template <typename T,
     typename = std::enable_if_t<std::is_integral<T>::value>>
-    static void serialize() {
+    static void parse(char *buf, T msg, size_t length) {
+        int cur = length-1;
+        if(msg < 0) {
+            buf[0] = '-';
+            msg = -msg;
+        } else if(msg == 0) {
+            buf[0] = '0';
+            return;
+        }
+        while(msg) {
+            char v = (msg % 10) + '0';
+            buf[cur--] = v;
+            msg /= 10;
+        }
     }
+
+    static void parse(char *buf, const char *msg, size_t length) {
+        std::memcpy(buf, msg, length);
+    }
+
+    template <size_t N>
+    static void parse(char *buf, const char (&msg)[N], size_t length) {
+        // TODO no copy
+        parse(buf, (char*)msg, length);
+    }
+
+    static void parse(char *buf, double msg, size_t length) {
+        long ival = msg;
+        size_t ilen = parseLength(ival);
+        parse(buf, ival, ilen);
+        buf += ilen;
+        msg -= ival;
+        length -= ilen + 1;
+        int cur = 0;
+        buf[cur++] = '.';
+        constexpr double EPS = 1e-12;
+        int limit = 5, v;
+        do {
+            msg *= 10;
+            v = msg;
+            buf[cur++] = v | 48;
+            msg -= v;
+        } while(msg > EPS && limit--);
+    }
+
+    static void parse(char *buf, char msg, ...) {
+        buf[0] = msg;
+    }
+
+    template <typename T,
+    typename = std::enable_if_t<std::is_integral<T>::value>>
+    static size_t parseLength(T val) {
+        if(val >= 0) {
+            if(val == 0)
+                return 0;
+            if(val >= 1 && val <= 9)
+                return 1;
+            if(val >= 10 && val <= 99)
+                return 2;
+            if(val >= 100 && val <= 999)
+                return 3;
+            if(val >= 1000 && val <= 9999)
+                return 4;
+            if(val >= 10000 && val <= 99999)
+                return 5;
+            if(val >= 100000 && val <= 999999)
+                return 6;
+            if(val >= 1000000 && val <= 9999999)
+                return 7;
+            if(val >= 10000000 && val <= 99999999)
+                return 8;
+            if(val >= 100000000 && val <= 999999999)
+                return 9;
+            return 10; // TODO long
+        }
+        return 1 + parseLength(-val);
+    }
+
+    template <size_t N>
+    static size_t parseLength(const char (&str)[N]) {
+        return N-1;
+    }
+
+    static size_t parseLength(const char *str) {
+        return strlen(str);
+    }
+
+    static size_t parseLength(double val) {
+        long ival = val;
+        size_t len = parseLength(ival) + 1; // '.'
+        val -= ival;
+        constexpr double EPS = 1e-12;
+        int limit = 5;
+        do {
+            val *= 10;
+            ival = val;
+            val -= ival;
+            len++;
+        } while(val > EPS && limit--);
+        return len;
+    }
+
+    static constexpr size_t parseLength(char ch) {
+        return 1;
+    }
+
     template <typename T>
-    static void serialize(T &whatever) {
+    static void parse(T &whatever) {
         // 这里通过ExtraStream<>来扩容，且不用为基础类也分出一堆的Stream struct
-        ExtraStream<T>::serialize(whatever);
+        ExtraStream<T>::parse(whatever);
     }
 };
 using Log = LogBase;
@@ -176,6 +289,7 @@ using Log = LogBase;
 
 int main() {
     using namespace dlog;
-    
+    Log::d(1, -223ll, "789", std::string("12.345"), 78.1, 78.0, 78.123445, 78.999, 0.0001);
+    std::cout << buf[ridx];
     return 0;
 }
