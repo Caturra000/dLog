@@ -113,6 +113,8 @@ struct Stream {
 
     static void parse(char *buf, char msg, size_t length);
 
+    static void parse(char *buf, const std::string &str, size_t length);
+
     template <typename T,
     typename = std::enable_if_t<std::is_integral<T>::value>>
     static size_t parseLength(T val);
@@ -125,6 +127,8 @@ struct Stream {
     static size_t parseLength(double val);
 
     static constexpr size_t parseLength(char ch) { return 1; }
+
+    static size_t parseLength(const std::string &str) { return str.length(); }
 
     template <typename T>
     static void parse(T &whatever) {
@@ -193,26 +197,35 @@ inline void Stream::parse(char *buf, const char (&msg)[N], size_t length) {
 
 
 inline void Stream::parse(char *buf, double msg, size_t length) {
-    long ival = msg;
-    size_t ilen = parseLength(ival);
-    parse(buf, ival, ilen);
-    buf += ilen;
-    msg -= ival;
-    length -= ilen + 1;
-    int cur = 0;
-    buf[cur++] = '.';
-    constexpr double EPS = 1e-12;
-    int limit = 5, v;
-    do {
-        msg *= 10;
-        v = msg;
-        buf[cur++] = v | 48;
-        msg -= v;
-    } while(msg > EPS && limit--);
+    if(msg > 0) {
+        long ival = msg;
+        size_t ilen = parseLength(ival);
+        parse(buf, ival, ilen);
+        buf += ilen;
+        msg -= ival;
+        length -= ilen + 1;
+        int cur = 0;
+        buf[cur++] = '.';
+        constexpr double EPS = 1e-12;
+        int limit = 5, v;
+        do {
+            msg *= 10;
+            v = msg;
+            buf[cur++] = v | 48;
+            msg -= v;
+        } while(msg > EPS && limit--);
+    } else {
+        *buf++ = '-';
+        parse(buf, -msg, length-1);
+    }
 }
 
 inline void Stream::parse(char *buf, char msg, size_t) {
     buf[0] = msg;
+}
+
+inline void Stream::parse(char *buf, const std::string &str, size_t length) {
+    parse(buf, str.c_str(), length);
 }
 
 
@@ -220,7 +233,7 @@ template <typename T,typename>
 inline size_t Stream::parseLength(T val) {
     if(val >= 0) {
         if(val == 0)
-            return 0;
+            return 1;
         if(val >= 1 && val <= 9)
             return 1;
         if(val >= 10 && val <= 99)
@@ -245,18 +258,21 @@ inline size_t Stream::parseLength(T val) {
 }
 
 inline size_t Stream::parseLength(double val) {
-        long ival = val;
-        size_t len = parseLength(ival) + 1; // '.'
-        val -= ival;
-        constexpr double EPS = 1e-12;
-        int limit = 5;
-        do {
-            val *= 10;
-            ival = val;
+        if(val > 0) {
+            long ival = val;
+            size_t len = parseLength(ival) + 1; // '.'
             val -= ival;
-            len++;
-        } while(val > EPS && limit--);
-        return len;
+            constexpr double EPS = 1e-12;
+            int limit = 5;
+            do {
+                val *= 10;
+                ival = val;
+                val -= ival;
+                len++;
+            } while(val > EPS && limit--);
+            return len;
+        }
+        return 1 + parseLength(-val);
     }
 
 } // dlog
@@ -264,8 +280,9 @@ inline size_t Stream::parseLength(double val) {
 
 int main() {
     using namespace dlog;
-    //Log::d(1, -223ll, "789", std::string("12.345"), 78.1, 78.0, 78.123445, 78.999, 0.0001);
-    Log::d(1, 3, 4, 6, -3, 12.345, "are you ok?", 34.23); // Bug: -34.23
+    Log::d(1, -223ll, "789", std::string("12.345"), 78.1, 78.0, 78.123445, 78.999, 0.0001);
+    Log::d(1, 3, 4, 6, -3, 12.345, "are you ok?", -34.23);
+    Log::d(-0.102);
     std::cout << buf[ridx];
     return 0;
 }
