@@ -2,10 +2,16 @@
 
 // test-version
 
+namespace dlog {
 
-char buf[2][1<<20];
+// shared mutable variables
+// protected by namespace
+
+constexpr size_t DLOG_BUFSIZE = 1<<18;
+char buf[2][DLOG_BUFSIZE];
 int ridx = 0, rcur = 0;
 int widx = 1, wcur = 0;
+
 struct LogBase {
 
     // Scheduler
@@ -87,13 +93,62 @@ struct LogBase {
 // 并且提供阻塞（当r/w失衡时）
 struct Scheduler {
 
-    char* current() {
-        if(rcur != sizeof(buf[0])) {
-            return buf[ridx];
-        }
+    static std::mutex rmtx, wmtx;
+    static std::condition_variable rcond, wcond;
 
+    // brief: start a write-log thread
+    // usage: Scheduler::start().detach()
+    // TODO stop it manually
+    static std::thread start() {
+        return std::thread {[&] {
+            while(true) {
+                {
+                    std::unique_lock<std::mutex> lk{wmtx};
+                    wcond.wait(lk, [&] { return wcur != 0; });
+                    // write to file
+                    // ...
+                    // 是否需要主动swap？
+                    // try to lock rmtx // avoid deadlock
+                    // widx ^= 1; ridx ^= 1; ...
+                    wcur = 0;
+                }
+                rcond.notify_one();
+                // if(stop) break;
+            }
+        }};
+    }
+
+    // return a current read buffer for user
+    static char* current() {
         return buf[ridx];
-        
+    }
+
+    // called by looper thread
+    static void log(/*T msg&, */size_t length) {
+        // parse T locally without lock
+        // ...
+        char tmp[1<<10 /*StreamTraitis<T>::size*/];
+        // Stream::serialize(tmp, msg, length);
+
+        {
+            std::lock_guard<std::mutex> lk{rmtx};
+            // auto rbuf = current();
+            if(length > sizeof(buf[0]) - rcur + 2 /*' ' or \n */ /*|| timeout*/) {
+                {
+                    std::unique_lock<std::mutex> _{wmtx};
+                    rcond.wait(_, [&] { return wcur == 0; });
+                    ridx ^= 1; widx ^= 1;
+                    wcur = rcur; rcur = 0;
+                }
+                wcond.notify_one();
+            }
+            
+            auto rbuf = current();
+            // write to rbuf
+            for(int i = 0; i < length; ++i) rbuf[rcur++] = tmp[i];
+            // if(endOfLine) rbuf[rcur++] = '\n';
+        }
+        wcond.notify_one();
     }
     
 };
@@ -104,17 +159,23 @@ struct ExtraStream;
 struct Stream {
     template <typename T,
     typename = std::enable_if_t<std::is_integral<T>::value>>
-    static void from() {
+    static void serialize() {
     }
     template <typename T>
-    static void from(T &whatever) {
+    static void serialize(T &whatever) {
         // 这里通过ExtraStream<>来扩容，且不用为基础类也分出一堆的Stream struct
-        ExtraStream<T>::from(whatever);
+        ExtraStream<T>::serialize(whatever);
     }
 };
 using Log = LogBase;
+
+
+
+} // dlog
+
+
 int main() {
-    Log::d(1, -223ll, "789", std::string("12.345"), 78.1, 78.0, 78.123445, 78.999, 0.0001);
-    std::cout << buf[ridx];
+    using namespace dlog;
+    
     return 0;
 }
