@@ -98,6 +98,82 @@ struct Stream {
     }
 };
 
+
+struct IoVector {
+    const char *base; // base address
+    size_t len; // [base, base + len)
+};
+
+struct ResolveArgs {
+    char *local; // local stack buffer
+    size_t cur; // current index of local
+    IoVector *ioves;
+    size_t count; // count of iovectors
+    size_t total; // total length
+};
+
+struct Resolver {
+    template <typename T>
+    static void resolve(ResolveArgs &args, T &&msg) {
+        resolveDispatch(args, msg);
+    }
+
+    template <typename T, typename ...Ts>
+    static void resolve(ResolveArgs &args, T&&msg, Ts &&...others) {
+        resolveDispatch(args, msg);
+        resolve(args, std::forward<Ts>(others)...);
+    }
+
+    static size_t calspace(ResolveArgs &args) {
+        return args.total + args.count;
+    }
+
+    static void vec2buf(ResolveArgs &args, char *buf) {
+        IoVector *ioves = args.ioves;
+        for(int i = 0, j = 0; i < args.count; ++i) {
+            std::memcpy(buf + j, ioves[i].base, ioves[i].len);
+            j += ioves[i].len;
+            if(i == args.count-1) buf[j] = ' ';
+            else buf[j] = '\n';
+            ++j;
+        }
+    }
+
+private:
+
+    template <typename T>
+    static void resolveDispatch(ResolveArgs &args, T &&msg) {
+        size_t len = Stream::parseLength(msg);
+        const char *buf = resolveIovBase(args, msg);
+        parseIfNeed(buf, msg, len);
+        bool isLocal = (buf == args.local + args.cur);
+        if(isLocal) args.cur += len;
+        args.ioves[args.count].base = buf;
+        args.ioves[args.count++].len = len;
+    }
+
+    template <typename T>
+    static const char* resolveIovBase(ResolveArgs &args, T &&) {
+        return args.local + args.cur;
+    }
+
+    template <size_t N>
+    static const char* resolveIovBase(ResolveArgs &args, const char(&str)[N]) {
+        return str;
+    }
+
+    template <typename T>
+    static void parseIfNeed(const char *buf, T &&msg, size_t length) {
+        // safe
+        Stream::parse(const_cast<char*>(buf), msg, length);
+    }
+
+    template <size_t N>
+    static void parseIfNeed(const char *buf, const char (&msg)[N], size_t length) {}
+
+};
+
+
 std::mutex rmtx, wmtx;
 std::condition_variable rcond, wcond;
 using namespace std::literals::chrono_literals;
@@ -116,7 +192,7 @@ struct Scheduler {
     // TODO stop it manually
     static std::thread start() {
         std::call_once(cflag, [] { checkpoint = std::chrono::system_clock::now(); });
-        return std::thread {[]() mutable {
+        return std::thread {[] {
             while(true) {
                 {
                     std::unique_lock<std::mutex> lk{wmtx};
@@ -141,18 +217,10 @@ struct Scheduler {
         return buf[ridx];
     }
 
-    // called by looper thread
-    template <typename T>
-    static void log(const T &msg,size_t length, char ch = ' ') {
-        // parse T locally without lock
-        // ...
-        char tmp[StreamTraits<T>::size];
-        Stream::parse(tmp, msg, length);
-
+    static void log(ResolveArgs &args) {
         {
             std::lock_guard<std::mutex> lk{rmtx};
-            // auto rbuf = current();
-            if(rcur + length > sizeof(buf[0]) + 2 /*' ' or \n */ || (std::chrono::system_clock::now() - checkpoint) > 500ms) {
+            if(rcur + Resolver::calspace(args) > sizeof(buf[0]) || (std::chrono::system_clock::now() - checkpoint) > 500ms) {
                 {
                     std::unique_lock<std::mutex> _{wmtx};
                     rcond.wait(_, [] { return wcur == 0; });
@@ -162,11 +230,9 @@ struct Scheduler {
                 wcond.notify_one();
                 checkpoint = std::chrono::system_clock::now();
             }
-            
             auto rbuf = current();
-            // write to rbuf
-            for(int i = 0; i < length; ++i) rbuf[rcur++] = tmp[i];
-            if(ch) rbuf[rcur++] = ch;
+            Resolver::vec2buf(args, rbuf);
+            rcur += Resolver::calspace(args);
         }
         wcond.notify_one();
     }
@@ -199,61 +265,15 @@ inline void LogBase::d(T &&msg, Ts &&...others) {
 
 template <typename T>
 inline void LogBase::i(T &&msg) {
-    Scheduler::log(msg, Stream::parseLength(msg), '\n');
+    // Scheduler::log(msg, Stream::parseLength(msg), '\n');
 }
 
 template <typename T, typename ...Ts>
 inline void LogBase::i(T &&msg, Ts &&...others) {
-    Scheduler::log(msg, Stream::parseLength(msg));
-    i(std::forward<Ts>(others)...);
+    // Scheduler::log(msg, Stream::parseLength(msg));
+    // i(std::forward<Ts>(others)...);
 }
 
-
-
-struct Iov {
-    const char *base;
-    size_t len;
-};
-
-struct Wrap {
-    char *tmp;
-    const char **tmpref;
-    size_t cur;
-    size_t refcur;
-    // Iov *ioves;
-};
-
-template <typename T>
-inline void processDispatch(Wrap &wrap, T &&msg, char ch) {
-    size_t length = Stream::parseLength(msg);
-    char *buf = wrap.tmp + wrap.cur;
-    Stream::parse(buf, msg, length);
-    if(ch) Stream::parse(buf + length, ch, 1);
-    wrap.cur += length + (ch != 0);
-}
-
-// template <size_t N>
-// inline void processDispatch(Wrap &wrap, const char (&msg)[N], char ch) {
-//     size_t length = Stream::parseLength(msg);
-//     char *buf = wrap.tmp + wrap.cur;
-    
-//     iov
-
-//     if(ch) Stream::parse(buf + length, ch, 1);
-//     wrap.cur += length + (ch != 0);
-// }
-
-
-template <typename T>
-inline void process(Wrap &wrap, T &&msg) {
-    processDispatch(wrap, msg, '\n');
-}
-
-template <typename T, typename ...Ts>
-inline void process(Wrap &wrap, T &&msg, Ts &&...others) {
-    processDispatch(wrap, msg, ' ');
-    process(wrap, std::forward<Ts>(others)...);
-}
 
 
 
@@ -264,17 +284,16 @@ template <typename ...Ts>
 inline void LogBase::info(Ts &&...msg) {
     char tmp[bufcnt(std::forward<Ts>(msg)...)];
     const char *tmpref[strcnt(std::forward<Ts>(msg)...)]; // an array stores char_ptr
-    // Iov ioves[sizeof...(msg)];
+    IoVector ioves[sizeof...(msg)];
     // TODO use std::array
-    size_t cur = 0, refcur = 0;
-    Wrap wrap {
-        .tmp = tmp,
-        .tmpref = tmpref, // unused
-        .cur = cur,
-        .refcur = refcur, // unused
-        // .ioves = ioves
+    ResolveArgs args {
+        .local = tmp,
+        .cur = 0,
+        .ioves = ioves,
+        .count = 0
     };
-    process(wrap, std::forward<Ts>(msg)...);
+    Resolver::resolve(args, std::forward<Ts>(msg)...);
+    Scheduler::log(args);
 }
 
 
@@ -402,13 +421,12 @@ inline size_t Stream::parseLength(double val) {
 
 int main() {
     using namespace dlog;
-    //auto t = Scheduler::start();
+    auto t = Scheduler::start();
     Log::info(1, -223ll, "789", std::string("12.345"), 78.1, 78.0, 78.123445, 78.999, 0.0001);
     Log::info(1, 3, 4, 6, -3, 12.345, "are you ok?", -34.23);
     Log::info(-0.102);
     Log::info(123);
     Log::info(1, -223ll);
-    
-    //t.join();
+    t.join();
     return 0;
 }
