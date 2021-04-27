@@ -38,8 +38,8 @@ struct Resolver {
         for(int i = 0, j = 0; i < args.count; ++i) {
             std::memcpy(buf + j, ioves[i].base, ioves[i].len);
             j += ioves[i].len;
-            if(i == args.count-1) buf[j] = ' ';
-            else buf[j] = '\n';
+            if(i == args.count-1) buf[j] = '\n';
+            else buf[j] = ' ';
             ++j;
         }
     }
@@ -55,6 +55,7 @@ private:
         if(isLocal) args.cur += len;
         args.ioves[args.count].base = buf;
         args.ioves[args.count++].len = len;
+        args.total += len;
     }
 
     template <typename T>
