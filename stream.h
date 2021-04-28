@@ -42,8 +42,8 @@ struct Stream {
     static void parse(char *buf, char msg, size_t length);
     static void parse(char *buf, const std::string &str, size_t length);
 
-    template <typename T> static SizeTypeIfInt<T> parseLength(T val);
-    template <size_t N> static size_t parseLength(const char (&str)[N]) { return N-1; }
+    template <typename T> static constexpr SizeTypeIfInt<T> parseLength(T val);
+    template <size_t N> static constexpr size_t parseLength(const char (&str)[N]) { return N-1; }
     static size_t parseLength(const char *str) { return std::strlen(str); }
     static size_t parseLength(double val);
     static constexpr size_t parseLength(char ch) { return 1; }
@@ -119,7 +119,7 @@ inline void Stream::parse(char *buf, const std::string &str, size_t length) {
 
 
 template <typename T>
-inline Stream::SizeTypeIfInt<T>
+inline constexpr Stream::SizeTypeIfInt<T>
 Stream::parseLength(T val) {
     if(val >= 0) {
         if(val == 0)
