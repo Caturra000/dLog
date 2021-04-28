@@ -142,7 +142,9 @@ Stream::parseLength(T val) {
             return 8;
         if(val >= 100000000 && val <= 999999999)
             return 9;
-        return 10; // TODO long
+        if(val >= 1000000000 && val <= 9999999999L)
+            return 10;
+        return 10 + parseLength(val / 10000000000);
     }
     return 1 + parseLength(-val);
 }
