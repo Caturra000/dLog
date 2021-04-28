@@ -21,31 +21,34 @@ struct Scheduler {
 
             int cur, idx;
             auto swap = [&] {
-                ridx ^= 1; widx ^= 1;
+                ridx ^= 1;
+                widx ^= 1;
                 wcur = rcur;
                 rcur = 0;
 
                 sflag = true; // swap finished
 
                 cur = wcur;
-                idx = widx;
                 wcur = 0;
+
+                idx = widx;
+                
             };
 
 
             while(true) {
                 {
                     std::unique_lock<std::mutex> lk{smtx};
-                    auto res = cond.wait_for(lk, 10ms, [] { return !sflag; });
+                    auto request = cond.wait_for(lk, 10ms, [] { return !sflag; });
                     
-                    if(!res) {
-                        // corner case
+                    if(request) {
+                        swap();
+                    } else {  
+                        // corner case, timeout
                         if(rmtx.try_lock()) {
                             std::lock_guard<std::mutex> _{rmtx, std::adopt_lock};
                             swap();
                         }
-                    } else {
-                        swap();
                     }
                     
                 }
