@@ -29,47 +29,38 @@ template <typename T>
 struct ExtraStream;
 
 struct Stream {
-    template <typename T,
-    typename = std::enable_if_t<std::is_integral<T>::value>>
-    static void parse(char *buf, T msg, size_t length);
-
-    static void parse(char *buf, const char *msg, size_t length);
-
-    template <size_t N>
-    static void parse(char *buf, const char (&msg)[N], size_t length);
-
-    static void parse(char *buf, double msg, size_t length);
-
-    static void parse(char *buf, char msg, size_t length);
-
-    static void parse(char *buf, const std::string &str, size_t length);
-
-    template <typename T,
-    typename = std::enable_if_t<std::is_integral<T>::value>>
-    static size_t parseLength(T val);
-
-    template <size_t N>
-    static size_t parseLength(const char (&str)[N]) { return N-1; }
-
-    static size_t parseLength(const char *str) { return strlen(str); }
-
-    static size_t parseLength(double val);
-
-    static constexpr size_t parseLength(char ch) { return 1; }
-
-    static size_t parseLength(const std::string &str) { return str.length(); }
 
     template <typename T>
-    static void parse(T &whatever) {
-        // 这里通过ExtraStream<>来扩容，且不用为基础类也分出一堆的Stream struct
-        ExtraStream<T>::parse(whatever);
-    }
+    using VoidIfInt = std::enable_if_t<std::is_integral<T>::value>;
+    template <typename T>
+    using SizeTypeIfInt = std::enable_if_t<std::is_integral<T>::value, size_t>;
+
+    template <typename T> static VoidIfInt<T> parse(char *buf, T msg, size_t length);
+    template <size_t N> static void parse(char *buf, const char (&msg)[N], size_t length);
+    static void parse(char *buf, const char *msg, size_t length);
+    static void parse(char *buf, double msg, size_t length);
+    static void parse(char *buf, char msg, size_t length);
+    static void parse(char *buf, const std::string &str, size_t length);
+
+    template <typename T> static SizeTypeIfInt<T> parseLength(T val);
+    template <size_t N> static size_t parseLength(const char (&str)[N]) { return N-1; }
+    static size_t parseLength(const char *str) { return std::strlen(str); }
+    static size_t parseLength(double val);
+    static constexpr size_t parseLength(char ch) { return 1; }
+    static size_t parseLength(const std::string &str) { return str.length(); }
+
+    // template <typename T, typename = std::enable_if_t<>>
+    // static void parse(char *buf, T &&whatever, size_t length) {
+    //     // 这里通过ExtraStream<>来扩容，且不用为基础类也分出一堆的Stream struct
+    //     ExtraStream<T>::parse(buf, std::forward<T>(whatever), length);
+    // }
 };
 
 
 
-template <typename T,typename>
-inline void Stream::parse(char *buf, T msg, size_t length) {
+template <typename T>
+inline Stream::VoidIfInt<T>
+Stream::parse(char *buf, T msg, size_t length) {
     int cur = length-1;
     if(msg < 0) {
         buf[0] = '-';
@@ -85,16 +76,14 @@ inline void Stream::parse(char *buf, T msg, size_t length) {
     }
 }
 
-inline void Stream::parse(char *buf, const char *msg, size_t length) {
-    std::memcpy(buf, msg, length);
-}
-
 template <size_t N>
 inline void Stream::parse(char *buf, const char (&msg)[N], size_t length) {
-    // TODO no copy
     parse(buf, (char*)msg, length);
 }
 
+inline void Stream::parse(char *buf, const char *msg, size_t length) {
+    std::memcpy(buf, msg, length);
+}
 
 inline void Stream::parse(char *buf, double msg, size_t length) {
     if(msg > 0) {
@@ -129,8 +118,9 @@ inline void Stream::parse(char *buf, const std::string &str, size_t length) {
 }
 
 
-template <typename T,typename>
-inline size_t Stream::parseLength(T val) {
+template <typename T>
+inline Stream::SizeTypeIfInt<T>
+Stream::parseLength(T val) {
     if(val >= 0) {
         if(val == 0)
             return 1;
