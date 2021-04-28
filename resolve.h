@@ -35,12 +35,13 @@ struct Resolver {
 
     static void vec2buf(ResolveArgs &args, char *buf) {
         IoVector *ioves = args.ioves;
-        for(int i = 0, j = 0; i < args.count; ++i) {
-            std::memcpy(buf + j, ioves[i].base, ioves[i].len);
-            j += ioves[i].len;
-            if(i == args.count-1) buf[j] = '\n';
-            else buf[j] = ' ';
-            ++j;
+        size_t offset = 0;
+        for(size_t i = 0; i < args.count; ++i) {
+            std::memcpy(buf + offset, ioves[i].base, ioves[i].len);
+            offset += ioves[i].len;
+            if(i == args.count-1) buf[offset] = '\n';
+            else buf[offset] = ' ';
+            ++offset;
         }
     }
 
@@ -49,12 +50,13 @@ private:
     template <typename T>
     static void resolveDispatch(ResolveArgs &args, T &&msg) {
         size_t len = Stream::parseLength(msg);
-        const char *buf = resolveIovBase(args, msg);
-        parseIfNeed(buf, msg, len);
-        bool isLocal = (buf == args.local + args.cur);
-        if(isLocal) args.cur += len;
-        args.ioves[args.count].base = buf;
-        args.ioves[args.count++].len = len;
+        const char *ptr = resolveIovBase(args, msg);
+        parseIfNeed(ptr, msg, len);
+        bool isRuntime = (ptr == args.local + args.cur);
+        if(isRuntime) args.cur += len;
+        args.ioves[args.count].base = ptr;
+        args.ioves[args.count].len = len;
+        args.count++;
         args.total += len;
     }
 

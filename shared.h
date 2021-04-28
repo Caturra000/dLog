@@ -6,10 +6,10 @@ namespace dlog {
 // shared mutable variables
 // protected by namespace
 
-constexpr size_t DLOG_BUFSIZE = 50;
+constexpr size_t DLOG_BUFSIZE = 1<<20;
 char buf[2][DLOG_BUFSIZE];
-int ridx = 0, rcur = 0;
-int widx = 1, wcur = 0;
+size_t ridx = 0, rcur = 0;
+size_t widx = 1, wcur = 0; 
 
 } // dlog
 #endif
