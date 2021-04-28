@@ -11,53 +11,55 @@ std::condition_variable cond;
 using namespace std::literals::chrono_literals;
 bool sflag = true; // swap finished
 
-struct Scheduler {
+// a writer thread
+struct Wthread {
+    std::thread writer;
+    Wthread(): writer {[] {
+        int cur, idx;
+        auto swap = [&] {
+            ridx ^= 1;
+            widx ^= 1;
+            wcur = rcur;
+            rcur = 0;
 
-    // brief: start a write-log thread
-    // usage: Scheduler::start().detach()
-    // TODO stop it manually
-    static std::thread start() {
-        return std::thread {[] {
+            sflag = true; // swap finished
 
-            int cur, idx;
-            auto swap = [&] {
-                ridx ^= 1;
-                widx ^= 1;
-                wcur = rcur;
-                rcur = 0;
+            cur = wcur;
+            wcur = 0;
 
-                sflag = true; // swap finished
+            idx = widx;
+            
+        };
 
-                cur = wcur;
-                wcur = 0;
 
-                idx = widx;
+        while(true) {
+            {
+                std::unique_lock<std::mutex> lk{smtx};
+                auto request = cond.wait_for(lk, 10ms, [] { return !sflag; });
                 
-            };
-
-
-            while(true) {
-                {
-                    std::unique_lock<std::mutex> lk{smtx};
-                    auto request = cond.wait_for(lk, 10ms, [] { return !sflag; });
-                    
-                    if(request) {
-                        swap();
-                    } else if(rmtx.try_lock()) { // use try, no dead lock
-                        // corner case, timeout
-                        std::lock_guard<std::mutex> _{rmtx, std::adopt_lock};
-                        swap();
-                    } else {
-                        continue;
-                    }
-                    
+                if(request) {
+                    swap();
+                } else if(rmtx.try_lock()) { // use try, no dead lock
+                    // corner case, timeout
+                    std::lock_guard<std::mutex> _{rmtx, std::adopt_lock};
+                    swap();
+                } else {
+                    continue;
                 }
-                // debug IO
-                for(int i = 0; i < cur; ++i) std::cerr << buf[idx][i];
-                // if(stop) break;
+                
             }
-        }};
-    }
+            // debug IO
+            for(int i = 0; i < cur; ++i) std::cerr << buf[idx][i];
+            // if(stop) break;
+        }
+    }} {}
+
+    ~Wthread() { writer.join(); std::cout << "bye" << std::endl; }
+
+} wthread;
+
+// interact with wthread
+struct Scheduler {
 
     static void log(ResolveArgs &args) {
         std::lock_guard<std::mutex> lk{rmtx};
