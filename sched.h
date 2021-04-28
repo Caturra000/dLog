@@ -54,7 +54,7 @@ struct Wthread {
         }
     }} {}
 
-    ~Wthread() { writer.join(); std::cout << "bye" << std::endl; }
+    ~Wthread() { writer.join(); }
 
 } wthread;
 
