@@ -43,12 +43,12 @@ struct Scheduler {
                     
                     if(request) {
                         swap();
-                    } else {  
+                    } else if(rmtx.try_lock()) { // use try, no dead lock
                         // corner case, timeout
-                        if(rmtx.try_lock()) {
-                            std::lock_guard<std::mutex> _{rmtx, std::adopt_lock};
-                            swap();
-                        }
+                        std::lock_guard<std::mutex> _{rmtx, std::adopt_lock};
+                        swap();
+                    } else {
+                        continue;
                     }
                     
                 }
