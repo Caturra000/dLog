@@ -6,7 +6,7 @@
 
 int main() {
     using namespace dlog;
-    // auto t = Scheduler::start();
+    Log::init();
     Log::info(1, -223ll, "789", "12.345", 78.1, 78.0, 78.123445, 78.999, 0.0001);
     Log::info(1, -223ll, "789", "12.345", 78.1, 78.0, 78.123445, 78.999, 0.0001);
     Log::info(1, -223ll, "789", "12.345", 78.1, 78.0, 78.123445, 78.999, 0.0001);
@@ -14,6 +14,5 @@ int main() {
     Log::info(-0.102);
     Log::info(123);
     Log::info(1, -223ll);
-    // t.join();
     return 0;
 }

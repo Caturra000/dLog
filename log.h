@@ -8,6 +8,11 @@ namespace dlog {
 
 struct LogBase {
 
+    static Wthread& init() {
+        static Wthread wthread;
+        return wthread;
+    }
+
     template <typename ...Ts>
     static void info(Ts &&...msg);
 
