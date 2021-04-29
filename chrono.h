@@ -26,11 +26,11 @@ struct Chrono {
     };
 
     struct DateTime {
-        Date data;
+        Date date;
         Time time;
-        DaysDuration::Rep& year() { return data.y; }
-        DaysDuration::Rep& month() { return data.M; }
-        DaysDuration::Rep& day() { return data.d; }
+        DaysDuration::Rep& year() { return date.y; }
+        DaysDuration::Rep& month() { return date.M; }
+        DaysDuration::Rep& day() { return date.d; }
         DaysDuration::Rep& hour() { return time.h; }
         DaysDuration::Rep& minute() { return time.m; }
         DaysDuration::Rep& second() { return time.s; }
