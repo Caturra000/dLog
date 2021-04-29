@@ -4,7 +4,7 @@
 namespace dlog {
 
 // ref: http://howardhinnant.github.io/date_algorithms.html
-
+// UTC +0
 struct Chrono {
 
     struct DaysDuration {
@@ -56,6 +56,14 @@ struct Chrono {
 
     static Time getTime(std::chrono::system_clock::duration duration) {
         return calTime(duration);
+    }
+
+    static DateTime getDateTime(std::chrono::system_clock::time_point point) {
+        return { getDate(point), getTime(point) };
+    }
+
+    static DateTime getDateTime(std::chrono::system_clock::duration duration) {
+        return { getDate(duration), getTime(duration) };
     }
 
 private:
