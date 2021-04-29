@@ -23,6 +23,7 @@ struct Chrono {
         DaysDuration::Rep h;
         DaysDuration::Rep m;
         DaysDuration::Rep s;
+        DaysDuration::Rep S;
     };
 
     struct DateTime {
@@ -34,6 +35,7 @@ struct Chrono {
         DaysDuration::Rep& hour() { return time.h; }
         DaysDuration::Rep& minute() { return time.m; }
         DaysDuration::Rep& second() { return time.s; }
+        DaysDuration::Rep& millisecond() { return time.S; }
     };
 
     static constexpr Date getDate(std::chrono::system_clock::time_point point) noexcept {
@@ -104,10 +106,13 @@ inline Chrono::Time Chrono::calTime(std::chrono::system_clock::duration duration
     auto m = duration_cast<minutes>(duration);
     duration -= m;
     auto s = duration_cast<seconds>(duration);
+    duration -= s;
+    auto S = duration_cast<milliseconds>(duration);
     return {
         static_cast<DaysDuration::Rep>(h.count()),
         static_cast<DaysDuration::Rep>(m.count()),
-        static_cast<DaysDuration::Rep>(s.count())
+        static_cast<DaysDuration::Rep>(s.count()),
+        static_cast<DaysDuration::Rep>(S.count())
     };
 }
 
