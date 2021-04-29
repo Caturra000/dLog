@@ -4,6 +4,7 @@
 #include "resolve.h"
 #include "stream.h"
 #include "sched.h"
+#include "chrono.h"
 namespace dlog {
 
 struct LogBase {
