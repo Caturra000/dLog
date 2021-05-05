@@ -17,6 +17,9 @@ struct Chrono {
         DaysDuration::Rep y;
         DaysDuration::Rep M;
         DaysDuration::Rep d;
+        DaysDuration::Rep& year() { return y; }
+        DaysDuration::Rep& month() { return M; }
+        DaysDuration::Rep& day() { return d; }
     };
 
     struct Time {
@@ -24,18 +27,14 @@ struct Chrono {
         DaysDuration::Rep m;
         DaysDuration::Rep s;
         DaysDuration::Rep S;
+        DaysDuration::Rep& hour() { return h; }
+        DaysDuration::Rep& minute() { return m; }
+        DaysDuration::Rep& second() { return s; }
+        DaysDuration::Rep& millisecond() { return S; }
     };
 
-    struct DateTime {
-        Date date;
-        Time time;
-        DaysDuration::Rep& year() { return date.y; }
-        DaysDuration::Rep& month() { return date.M; }
-        DaysDuration::Rep& day() { return date.d; }
-        DaysDuration::Rep& hour() { return time.h; }
-        DaysDuration::Rep& minute() { return time.m; }
-        DaysDuration::Rep& second() { return time.s; }
-        DaysDuration::Rep& millisecond() { return time.S; }
+    struct DateTime: public Date, public Time {
+        DateTime(Date date, Time time): Date(date), Time(time) {}
     };
 
     static constexpr Date getDate(std::chrono::system_clock::time_point point) noexcept {
