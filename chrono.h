@@ -1,6 +1,8 @@
 #ifndef __DLOG_CHRONO_H__
 #define __DLOG_CHRONO_H__
 #include <bits/stdc++.h>
+#include "io.h"
+#include "digits.h"
 namespace dlog {
 
 // ref: http://howardhinnant.github.io/date_algorithms.html
@@ -9,8 +11,8 @@ struct Chrono {
 
     struct DaysDuration {
         using Rep = int;
-        using Period = std::chrono::duration<Rep,
-            std::ratio_multiply<std::chrono::hours::period, std::ratio<24>>>;
+        using Period = std::ratio_multiply<std::chrono::hours::period, std::ratio<24>>;
+        using Type = std::chrono::duration<Rep, Period>; // for std::chrono::duration
     };
 
     struct Date {
@@ -43,7 +45,7 @@ struct Chrono {
 
     // duration: since epoch
     static constexpr Date getDate(std::chrono::system_clock::duration duration) noexcept {
-        return getDate(std::chrono::duration_cast<DaysDuration::Period>(duration).count());
+        return getDate(std::chrono::duration_cast<DaysDuration::Type>(duration).count());
     }
 
     // FIX rep
@@ -65,6 +67,62 @@ struct Chrono {
 
     static DateTime getDateTime(std::chrono::system_clock::duration duration) {
         return { getDate(duration), getTime(duration) };
+    }
+
+    // utils
+
+    static std::chrono::system_clock::time_point now() {
+        return std::chrono::system_clock::now();
+    }
+
+    // truncate: yyyy-MM-dd hh:mm:ss -> yyyy-MM-dd 00:00:00
+    static constexpr auto thisDay(std::chrono::system_clock::time_point point) noexcept -> decltype(point) {
+        constexpr std::chrono::system_clock::time_point epoch {};
+        return epoch + std::chrono::duration_cast<Chrono::DaysDuration::Type>(point.time_since_epoch());
+    }
+
+    // only for debug
+    static std::string formatDebug(std::chrono::system_clock::time_point point) {
+        auto dateTime = getDateTime(point);
+        return std::to_string(dateTime.year()) + '-' + std::to_string(dateTime.month()) + '-' + std::to_string(dateTime.day()) + ' '
+                + std::to_string(dateTime.hour()) + ':' + std::to_string(dateTime.minute()) + ':' + std::to_string(dateTime.second()) 
+                + '.' + std::to_string(dateTime.millisecond());
+    }
+
+    static std::pair<IoVector, IoVector> format(std::chrono::system_clock::time_point point) {
+        using namespace std::chrono;
+        using namespace std::chrono_literals;
+        static thread_local char dateRecord[] = "1970-01-01";
+        static thread_local char timeRecord[] = "00:00:00.000";
+        static thread_local system_clock::time_point last {};
+
+        auto duration = point - last;
+        auto dateTime = getDateTime(point);
+        if(duration >= 24h) {
+            last = thisDay(point);
+            // update date
+            // TODO use simple loop for short string 
+            std::memcpy(dateRecord, digits2050[dateTime.year()], 4);
+            std::memcpy(dateRecord + 5, digits100[dateTime.month()], 2);
+            std::memcpy(dateRecord + 8, digits100[dateTime.day()], 2);
+        }
+
+        // update time
+        std::memcpy(timeRecord, digits100[dateTime.hour()], 2);
+        std::memcpy(timeRecord + 3, digits100[dateTime.minute()], 2);
+        std::memcpy(timeRecord + 6, digits100[dateTime.second()], 2);
+        std::memcpy(timeRecord + 9, digits1000[dateTime.millisecond()], 3);
+
+        return std::make_pair(
+            IoVector {
+                .base = dateRecord,
+                .len = sizeof(dateRecord)-1
+            },
+            IoVector {
+                .base = timeRecord,
+                .len = sizeof(timeRecord)-1
+            }
+        );
     }
 
 private:
@@ -98,7 +156,7 @@ inline constexpr Chrono::Date Chrono::calDate(Int z) noexcept {
 
 inline Chrono::Time Chrono::calTime(std::chrono::system_clock::duration duration) {
     using namespace std::chrono;
-    auto prefix = duration_cast<DaysDuration::Period>(duration);
+    auto prefix = duration_cast<DaysDuration::Type>(duration);
     duration -= prefix;
     auto h = duration_cast<hours>(duration);
     duration -= h;

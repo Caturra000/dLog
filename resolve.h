@@ -2,12 +2,8 @@
 #define __DLOG_RESOLVE_H__
 #include <bits/stdc++.h>
 #include "stream.h"
+#include "io.h"
 namespace dlog {
-
-struct IoVector {
-    const char *base; // base address
-    size_t len; // [base, base + len)
-};
 
 struct ResolveArgs {
     char *local; // local stack buffer
