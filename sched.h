@@ -4,6 +4,7 @@
 #include "shared.h"
 #include "stream.h"
 #include "resolve.h"
+#include "fs.h"
 namespace dlog {
 
 std::mutex rmtx, smtx; // read_mutex swap_mutex
@@ -15,10 +16,12 @@ bool sflag = true; // swap finished
 class Wthread {
 public:
     Wthread();
-    ~Wthread() { writer.join(); }
+    ~Wthread();
 
 private:
     std::thread writer;
+    File file;
+    void writeFunc();
 }; // wthread;
 
 // interact with wthread
@@ -40,7 +43,17 @@ struct Scheduler {
 };
 
 
-Wthread::Wthread(): writer {[] {
+inline Wthread::Wthread()
+    : file("test.log"), // hard code
+      writer {[this] { writeFunc(); }} {}
+
+inline Wthread::~Wthread() {
+    if(writer.joinable()) {
+        writer.join();
+    }
+}
+
+inline void Wthread::writeFunc() {
     int cur, idx;
     auto swap = [&] {
         ridx ^= 1;
@@ -74,11 +87,9 @@ Wthread::Wthread(): writer {[] {
             }
             
         }
-        // debug IO
-        for(int i = 0; i < cur; ++i) std::cerr << buf[idx][i];
-        // if(stop) break;
+        file.append(buf[idx], cur);
     }
-}} {}
+}
 
 } // dlog
 #endif
