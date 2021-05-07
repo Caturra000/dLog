@@ -23,8 +23,16 @@ public:
 
     int fd() { return _fd; }
     void detach() { _fd = INVALID_FD; }
-    void append(const char *buf, size_t count) { ::write(_fd, buf, count); }
     void swap(File &that) { std::swap(this->_fd, that._fd); }
+    void append(const char *buf, size_t count) {
+        size_t written = 0;
+        while(written != count) {
+            size_t remain = count - written;
+            size_t n = ::write(_fd, buf + written, remain);
+            if(n < 0) ; // throw...
+            written += n;
+        }
+    }
 
 private:
     constexpr static int INVALID_FD = -1;
