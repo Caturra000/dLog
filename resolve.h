@@ -56,7 +56,7 @@ private:
         args.total += len;
     }
 
-    static void resolveDispatch(ResolveArgs &args, IoVector &iov) {
+    static void resolveDispatch(ResolveArgs &args, IoVector iov) {
         args.ioves[args.count].base = iov.base;
         args.ioves[args.count].len = iov.len;
         args.count++;

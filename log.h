@@ -45,19 +45,19 @@ using Log = LogBase;
 template <typename ...Ts>
 inline void LogBase::info(Ts &&...msg) {
     auto dateTime = Chrono::format(Chrono::now());
-    log(dateTime[0], dateTime[1], Tid::getIoV(), printLevel(INFO),  std::forward<Ts>(msg)...);
+    log(dateTime[0], dateTime[1], Tid::getIoV(), printLevel(INFO), std::forward<Ts>(msg)...);
 }
 
 template <typename ...Ts>
 inline void LogBase::debug(Ts &&...msg) {
     auto dateTime = Chrono::format(Chrono::now());
-    log(dateTime[0], dateTime[1], Tid::getIoV(), printLevel(DEBUG),  std::forward<Ts>(msg)...);
+    log(dateTime[0], dateTime[1], Tid::getIoV(), printLevel(DEBUG), std::forward<Ts>(msg)...);
 }
 
 template <typename ...Ts>
 inline void LogBase::log(Ts &&...msg) {
-    char tmp[bufcnt(std::forward<Ts>(msg)...)];
-    const char *tmpref[strcnt(std::forward<Ts>(msg)...)]; // an array stores char_ptr
+    char tmp[bufcnt(msg...)];
+    const char *tmpref[strcnt(msg...)]; // an array stores char_ptr
     IoVector ioves[sizeof...(msg)];
     ResolveArgs args {
         .local = tmp,

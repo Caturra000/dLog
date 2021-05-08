@@ -11,7 +11,7 @@ template <> struct StreamTraits<long long>: public StreamTraitsBase<21> {};
 template <> struct StreamTraits<double>: public StreamTraitsBase<42> {};
 template <> struct StreamTraits<char>: public StreamTraitsBase<2> {};
 template <> struct StreamTraits<char*>: public StreamTraitsBase<> {};
-template <size_t N> struct StreamTraits<const char(&)[N]>: public StreamTraitsBase<N> {};
+template <> struct StreamTraits<std::string>: public StreamTraitsBase<> {};
 template <size_t N> struct StreamTraits<const char[N]>: public StreamTraitsBase<N> {};
 // use rvalue and perfect forward to support const char[]
 template <typename T> inline constexpr size_t bufcnt(T &&) { return StreamTraits<T>::size; }
