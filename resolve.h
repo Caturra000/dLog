@@ -63,6 +63,16 @@ private:
         args.total += iov.len;
     }
 
+    template <size_t N>
+    static void resolveDispatch(ResolveArgs &args, std::array<IoVector, N> &ioves) {
+        for(auto &iov : ioves) resolveDispatch(args, iov);
+    }
+
+    template <size_t N>
+    static void resolveDispatch(ResolveArgs &args, std::array<IoVector, N> &&ioves) {
+        resolveDispatch(args, ioves);
+    }
+
     template <typename T>
     static const char* resolveIovBase(ResolveArgs &args, T &&) {
         return args.local + args.cur;

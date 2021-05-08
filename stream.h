@@ -13,18 +13,6 @@ template <> struct StreamTraits<char>: public StreamTraitsBase<2> {};
 template <> struct StreamTraits<char*>: public StreamTraitsBase<> {};
 template <> struct StreamTraits<std::string>: public StreamTraitsBase<> {};
 template <size_t N> struct StreamTraits<const char[N]>: public StreamTraitsBase<N> {};
-// use rvalue and perfect forward to support const char[]
-template <typename T> inline constexpr size_t bufcnt(T &&) { return StreamTraits<T>::size; }
-template <typename T, typename ...Ts> inline constexpr size_t bufcnt(T &&, Ts &&...others) {
-    return StreamTraits<T>::size + bufcnt(std::forward<Ts>(others)...);
-}
-
-template <typename T> inline constexpr size_t strcnt(T&&) { return 0; }
-template <size_t N> inline constexpr size_t strcnt(const char (&)[N]) { return 1; }
-template <typename T, typename ...Ts> inline constexpr size_t strcnt(T &&t, Ts &&...ts) {
-    return strcnt(std::forward<T>(t)) + strcnt(std::forward<Ts>(ts)...); 
-}
-
 
 template <typename T>
 struct ExtraStream;
