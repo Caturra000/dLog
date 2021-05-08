@@ -4,12 +4,13 @@
 namespace dlog {
 
 template <size_t N = 1024> struct StreamTraitsBase { static constexpr size_t size = N; };
-template <typename T> struct StreamTraits: public StreamTraitsBase<> {};
+template <typename T> struct StreamTraits: public StreamTraitsBase<sizeof(T) + 10> {};
 template <> struct StreamTraits<int>: public StreamTraitsBase<12> {}; // std::log10(INT_MAX)+1 + 1
 template <> struct StreamTraits<long>: public StreamTraitsBase<21> {};
 template <> struct StreamTraits<long long>: public StreamTraitsBase<21> {};
 template <> struct StreamTraits<double>: public StreamTraitsBase<42> {};
 template <> struct StreamTraits<char>: public StreamTraitsBase<2> {};
+template <> struct StreamTraits<char*>: public StreamTraitsBase<> {};
 template <size_t N> struct StreamTraits<const char(&)[N]>: public StreamTraitsBase<N> {};
 template <size_t N> struct StreamTraits<const char[N]>: public StreamTraitsBase<N> {};
 // use rvalue and perfect forward to support const char[]
@@ -49,11 +50,17 @@ struct Stream {
     static constexpr size_t parseLength(char ch) { return 1; }
     static size_t parseLength(const std::string &str) { return str.length(); }
 
-    // template <typename T, typename = std::enable_if_t<>>
-    // static void parse(char *buf, T &&whatever, size_t length) {
-    //     // 这里通过ExtraStream<>来扩容，且不用为基础类也分出一堆的Stream struct
-    //     ExtraStream<T>::parse(buf, std::forward<T>(whatever), length);
-    // }
+    template <typename T>
+    static auto parse(char *buf, T &&whatever, size_t length)
+        -> decltype(ExtraStream<T>::parse(0, std::forward<T>(whatever), 0)) {
+        ExtraStream<T>::parse(buf, std::forward<T>(whatever), length);
+    }
+
+    template <typename T>
+    static auto parseLength(T &&whatever)
+        -> decltype(ExtraStream<T>::parseLength(std::forward<T>(whatever))) {
+        return ExtraStream<T>::parseLength(std::forward<T>(whatever));
+    }
 };
 
 

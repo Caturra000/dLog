@@ -89,7 +89,7 @@ struct Chrono {
                 + '.' + std::to_string(dateTime.millisecond());
     }
 
-    static std::pair<IoVector, IoVector> format(std::chrono::system_clock::time_point point) {
+    static std::array<IoVector, 2> format(std::chrono::system_clock::time_point point) {
         using namespace std::chrono;
         using namespace std::chrono_literals;
         static thread_local char dateRecord[] = "1970-01-01";
@@ -113,7 +113,7 @@ struct Chrono {
         std::memcpy(timeRecord + 6, digits100[dateTime.second()], 2);
         std::memcpy(timeRecord + 9, digits1000[dateTime.millisecond()], 3);
 
-        return std::make_pair(
+        return {
             IoVector {
                 .base = dateRecord,
                 .len = sizeof(dateRecord)-1
@@ -122,7 +122,7 @@ struct Chrono {
                 .base = timeRecord,
                 .len = sizeof(timeRecord)-1
             }
-        );
+        };
     }
 
 private:

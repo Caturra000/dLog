@@ -16,12 +16,12 @@ struct ResolveArgs {
 struct Resolver {
     template <typename T>
     static void resolve(ResolveArgs &args, T &&msg) {
-        resolveDispatch(args, msg);
+        resolveDispatch(args, std::forward<T>(msg));
     }
 
     template <typename T, typename ...Ts>
     static void resolve(ResolveArgs &args, T&&msg, Ts &&...others) {
-        resolveDispatch(args, msg);
+        resolveDispatch(args, std::forward<T>(msg));
         resolve(args, std::forward<Ts>(others)...);
     }
 
@@ -45,7 +45,7 @@ private:
 
     template <typename T>
     static void resolveDispatch(ResolveArgs &args, T &&msg) {
-        size_t len = Stream::parseLength(msg);
+        size_t len = Stream::parseLength(std::forward<T>(msg));
         const char *ptr = resolveIovBase(args, msg);
         parseIfNeed(ptr, msg, len);
         bool isRuntime = (ptr == args.local + args.cur);
@@ -54,6 +54,13 @@ private:
         args.ioves[args.count].len = len;
         args.count++;
         args.total += len;
+    }
+
+    static void resolveDispatch(ResolveArgs &args, IoVector &iov) {
+        args.ioves[args.count].base = iov.base;
+        args.ioves[args.count].len = iov.len;
+        args.count++;
+        args.total += iov.len;
     }
 
     template <typename T>
@@ -76,6 +83,7 @@ private:
     static void parseIfNeed(const char *buf, const char (&msg)[N], size_t length) {}
 
 };
+
 
 } // dlog
 #endif
