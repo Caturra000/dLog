@@ -45,15 +45,13 @@ using Log = LogBase;
 template <typename ...Ts>
 inline void LogBase::info(Ts &&...msg) {
     auto dateTime = Chrono::format(Chrono::now());
-    auto tid = Tid::getIoV();
-    log(dateTime[0], dateTime[1], tid, printLevel(INFO),  std::forward<Ts>(msg)...);
+    log(dateTime[0], dateTime[1], Tid::getIoV(), printLevel(INFO),  std::forward<Ts>(msg)...);
 }
 
 template <typename ...Ts>
 inline void LogBase::debug(Ts &&...msg) {
     auto dateTime = Chrono::format(Chrono::now());
-    auto tid = Tid::getIoV();
-    log(dateTime[0], dateTime[1], tid, printLevel(DEBUG),  std::forward<Ts>(msg)...);
+    log(dateTime[0], dateTime[1], Tid::getIoV(), printLevel(DEBUG),  std::forward<Ts>(msg)...);
 }
 
 template <typename ...Ts>

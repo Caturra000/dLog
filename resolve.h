@@ -63,6 +63,10 @@ private:
         args.total += iov.len;
     }
 
+    static void resolveDispatch(ResolveArgs &args, IoVector &&iov) {
+        resolveDispatch(args, iov); // lref
+    }
+
     template <typename T>
     static const char* resolveIovBase(ResolveArgs &args, T &&) {
         return args.local + args.cur;
