@@ -11,6 +11,22 @@ struct ResolveArgs {
     IoVector *ioves;
     size_t count; // count of iovectors
     size_t total; // total length
+
+    char* currentLocal() { return local + cur; }
+
+    // notice: message should be parsed & transferred to local
+    void updateLocal(size_t len) {
+        updateExternal(local + cur, len);
+        cur += len;
+    }
+
+    // external source, just update IO vectors
+    void updateExternal(const char *buf, size_t len) {
+        ioves[count].base = buf;
+        ioves[count].len = len;
+        count++;
+        total += len;
+    }
 };
 
 struct Resolver {
@@ -46,30 +62,20 @@ private:
     template <typename T>
     static void resolveDispatch(ResolveArgs &args, T &&msg) {
         size_t len = Stream::parseLength(std::forward<T>(msg));
-        char *buf = args.local + args.cur;
+        char *buf = args.currentLocal();
         Stream::parse(buf, std::forward<T>(msg), len);
-        args.cur += len;
-        args.ioves[args.count].base = buf;
-        args.ioves[args.count].len = len;
-        args.count++;
-        args.total += len;
+        args.updateLocal(len);
     }
 
     template <size_t N>
     static void resolveDispatch(ResolveArgs &args, const char (&msg)[N]) {
         static_assert(N >= 1, "N must be positive.");
         size_t len = N-1;
-        args.ioves[args.count].base = msg;
-        args.ioves[args.count].len = len;
-        args.count++;
-        args.total += len;
+        args.updateExternal(msg, len);
     }
 
     static void resolveDispatch(ResolveArgs &args, IoVector iov) {
-        args.ioves[args.count].base = iov.base;
-        args.ioves[args.count].len = iov.len;
-        args.count++;
-        args.total += iov.len;
+        args.updateExternal(iov.base, iov.len);
     }
 
     template <size_t N>
