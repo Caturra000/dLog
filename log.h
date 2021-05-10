@@ -8,6 +8,12 @@
 #include "tid.h"
 namespace dlog {
 
+#define DLOG_DEBUG(...) Log::debug(__FILE__, __LINE__, __VA_ARGS__)
+#define DLOG_INFO(...) Log::info(__FILE__, __LINE__, __VA_ARGS__)
+#define DLOG_WARN(...) Log::warn(__FILE__, __LINE__, __VA_ARGS__)
+#define DLOG_ERROR(...) Log::error(__FILE__, __LINE__, __VA_ARGS__)
+#define DLOG_WTF(...) Log::wtf(__FILE__, __LINE__, __VA_ARGS__)
+
 class LogBase {
 public:
     static Wthread& init() {
@@ -120,7 +126,7 @@ inline void LogBase::log(Ts &&...msg) {
 
 template <LogBase::LogLevel LEVEL, typename ...Ts>
 inline void LogBase::logFormat(Ts &&...msg) {
-    log(Chrono::format(Chrono::now()), Tid::format(), levelFormat<LEVEL>(), std::forward<Ts>(msg)...);
+    log(Chrono::format(Chrono::now()), levelFormat<LEVEL>(), Tid::format(), std::forward<Ts>(msg)...);
 }
 
 } // dlog
