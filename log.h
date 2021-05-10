@@ -36,19 +36,23 @@ private:
         INFO,
         WARN,
         ERROR,
-        UNKNOWN
+        UNKNOWN,
+
+        LOG_LEVEL_LIMIT
     };
 
     // print to file
-    static constexpr char printLevel(LogLevel level) noexcept {
-        return "DIWE?"[level];
+    template <LogLevel Level>
+    static constexpr char format() noexcept {
+        static_assert(Level >= 0 && Level < LOG_LEVEL_LIMIT, "check log level config.");
+        return "DIWE?"[Level];
     }
 
     template <typename ...Ts>
     static void log(Ts &&...msg);
 
-    template <typename ...Ts>
-    static void logFormat(LogLevel level, Ts &&...msg);
+    template <LogLevel Level, typename ...Ts>
+    static void logFormat(Ts &&...msg);
 
 };
 
@@ -56,27 +60,27 @@ using Log = LogBase;
 
 template <typename ...Ts>
 inline void LogBase::debug(Ts &&...msg) {
-    logFormat(LogLevel::DEBUG, std::forward<Ts>(msg)...);
+    logFormat<LogLevel::DEBUG>(std::forward<Ts>(msg)...);
 }
 
 template <typename ...Ts>
 inline void LogBase::info(Ts &&...msg) {
-    logFormat(LogLevel::INFO, std::forward<Ts>(msg)...);
+    logFormat<LogLevel::INFO>(std::forward<Ts>(msg)...);
 }
 
 template <typename ...Ts>
 inline void LogBase::warn(Ts &&...msg) {
-    logFormat(LogLevel::WARN, std::forward<Ts>(msg)...);
+    logFormat<LogLevel::INFO>(std::forward<Ts>(msg)...);
 }
 
 template <typename ...Ts>
 inline void LogBase::error(Ts &&...msg) {
-    logFormat(LogLevel::ERROR, std::forward<Ts>(msg)...);
+    logFormat<LogLevel::ERROR>(std::forward<Ts>(msg)...);
 }
 
 template <typename ...Ts>
 inline void LogBase::unknown(Ts &&...msg) {
-    logFormat(LogLevel::UNKNOWN, std::forward<Ts>(msg)...);
+    logFormat<LogLevel::UNKNOWN>(std::forward<Ts>(msg)...);
 }
 
 template <typename T> inline constexpr size_t bufcnt(T &&) { return StreamTraits<T>::size; }
@@ -115,9 +119,9 @@ inline void LogBase::log(Ts &&...msg) {
     Scheduler::log(args);
 }
 
-template <typename ...Ts>
-inline void LogBase::logFormat(LogLevel level, Ts &&...msg) {
-    log(Chrono::format(Chrono::now()), Tid::getIoV(), printLevel(level), std::forward<Ts>(msg)...);
+template <LogBase::LogLevel Level, typename ...Ts>
+inline void LogBase::logFormat(Ts &&...msg) {
+    log(Chrono::format(Chrono::now()), Tid::format(), format<Level>(), std::forward<Ts>(msg)...);
 }
 
 } // dlog

@@ -13,7 +13,7 @@ public:
         return instance;
     }
 
-    static IoVector getIoV() {
+    static IoVector format() {
         auto &instance = get();
         return { .base = instance.buf, .len = instance.len };
     }
