@@ -46,11 +46,20 @@ private:
     template <typename T>
     static void resolveDispatch(ResolveArgs &args, T &&msg) {
         size_t len = Stream::parseLength(std::forward<T>(msg));
-        const char *ptr = resolveIovBase(args, msg);
-        parseIfNeed(ptr, msg, len);
-        bool isRuntime = (ptr == args.local + args.cur);
-        if(isRuntime) args.cur += len;
-        args.ioves[args.count].base = ptr;
+        char *buf = args.local + args.cur;
+        Stream::parse(buf, std::forward<T>(msg), len);
+        args.cur += len;
+        args.ioves[args.count].base = buf;
+        args.ioves[args.count].len = len;
+        args.count++;
+        args.total += len;
+    }
+
+    template <size_t N>
+    static void resolveDispatch(ResolveArgs &args, const char (&msg)[N]) {
+        static_assert(N >= 1, "N must be positive.");
+        size_t len = N-1;
+        args.ioves[args.count].base = msg;
         args.ioves[args.count].len = len;
         args.count++;
         args.total += len;
@@ -72,28 +81,7 @@ private:
     static void resolveDispatch(ResolveArgs &args, std::array<IoVector, N> &&ioves) {
         resolveDispatch(args, ioves);
     }
-
-    template <typename T>
-    static const char* resolveIovBase(ResolveArgs &args, T &&) {
-        return args.local + args.cur;
-    }
-
-    template <size_t N>
-    static const char* resolveIovBase(ResolveArgs &args, const char(&str)[N]) {
-        return str;
-    }
-
-    template <typename T>
-    static void parseIfNeed(const char *buf, T &&msg, size_t length) {
-        // safe
-        Stream::parse(const_cast<char*>(buf), msg, length);
-    }
-
-    template <size_t N>
-    static void parseIfNeed(const char *buf, const char (&msg)[N], size_t length) {}
-
 };
-
 
 } // dlog
 #endif
