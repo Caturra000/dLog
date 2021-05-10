@@ -28,7 +28,7 @@ public:
     static void error(Ts &&...msg);
 
     template <typename ...Ts>
-    static void unknown(Ts &&...msg);
+    static void wtf(Ts &&...msg);
 
 private:
     enum LogLevel {
@@ -36,16 +36,15 @@ private:
         INFO,
         WARN,
         ERROR,
-        UNKNOWN,
+        WTF,
 
         LOG_LEVEL_LIMIT
     };
 
-    // print to file
-    template <LogLevel Level>
-    static constexpr char format() noexcept {
-        static_assert(Level >= 0 && Level < LOG_LEVEL_LIMIT, "check log level config.");
-        return "DIWE?"[Level];
+    template <LogLevel LEVEL>
+    static constexpr char levelFormat() noexcept {
+        static_assert(LEVEL >= 0 && LEVEL < LOG_LEVEL_LIMIT, "check log level config.");
+        return "DIWE?"[LEVEL];
     }
 
     template <typename ...Ts>
@@ -70,7 +69,7 @@ inline void LogBase::info(Ts &&...msg) {
 
 template <typename ...Ts>
 inline void LogBase::warn(Ts &&...msg) {
-    logFormat<LogLevel::INFO>(std::forward<Ts>(msg)...);
+    logFormat<LogLevel::WARN>(std::forward<Ts>(msg)...);
 }
 
 template <typename ...Ts>
@@ -79,8 +78,8 @@ inline void LogBase::error(Ts &&...msg) {
 }
 
 template <typename ...Ts>
-inline void LogBase::unknown(Ts &&...msg) {
-    logFormat<LogLevel::UNKNOWN>(std::forward<Ts>(msg)...);
+inline void LogBase::wtf(Ts &&...msg) {
+    logFormat<LogLevel::WTF>(std::forward<Ts>(msg)...);
 }
 
 template <typename T> inline constexpr size_t bufcnt(T &&) { return StreamTraits<T>::size; }
@@ -119,9 +118,9 @@ inline void LogBase::log(Ts &&...msg) {
     Scheduler::log(args);
 }
 
-template <LogBase::LogLevel Level, typename ...Ts>
+template <LogBase::LogLevel LEVEL, typename ...Ts>
 inline void LogBase::logFormat(Ts &&...msg) {
-    log(Chrono::format(Chrono::now()), Tid::format(), format<Level>(), std::forward<Ts>(msg)...);
+    log(Chrono::format(Chrono::now()), Tid::format(), levelFormat<LEVEL>(), std::forward<Ts>(msg)...);
 }
 
 } // dlog
