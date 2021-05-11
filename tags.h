@@ -19,24 +19,48 @@ struct ThreadIdTag {
     }
 };
 
+/// tuple helper
 
-template <typename T>
-struct TagResolver {
+template <size_t I, typename T, typename ...Ts>
+struct TupleResolver;
+
+template <typename T, typename ...Ts>
+struct TupleResolver<0, std::tuple<T, Ts...>> {
+    using type = T;
+};
+
+template <size_t I, typename T, typename ...Ts>
+struct TupleResolver<I, std::tuple<T, Ts...>> {
+    using type = typename TupleResolver<I-1, std::tuple<Ts...>>::type;
+};
+
+
+
+
+template <size_t I, typename ...Ts>
+struct TagResolver;
+
+// return static method 'format' of i_th type of tuple
+template <size_t I, typename ...Ts>
+struct TagResolver<I, std::tuple<Ts...>> {
+    using type = typename TupleResolver<I, std::tuple<Ts...>>::type;
     static decltype(auto) format() {
-        return T::format();
+        return type::format();
     }
 };
 
-// template <typename ...Ts>
-// struct TagsResolver;
+template <typename ...Ts>
+struct TagsResolver;
 
-// template <typename ...Ts>
-// struct TagsResolver<std::tuple<Ts...>> {
-//     static std::array<IoVector, sizeof...(Ts)> format() {
-//         return { TagResolver<Ts>::format()... };
-//     }
-// };
-
+// TODO: simple interface
+template <typename ...Ts, typename ...PlaceHolders, typename PlaceHolder>
+struct TagsResolver<std::tuple<Ts...>, PlaceHolder, std::tuple<PlaceHolders...> > {
+    static decltype(auto) format() {
+        constexpr auto pos = Find<PlaceHolder, PlaceHolders...>::value; // 0based
+        using Nth = typename TagResolver<pos, std::tuple<Ts...>>::type;
+        return Nth::format();
+    }
+};
 
 template <typename V>
 struct Elem;
