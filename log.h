@@ -4,6 +4,7 @@
 #include "io.h"
 #include "resolve.h"
 #include "sched.h"
+#include "level.h"
 #include "tags.h"
 namespace dlog {
 
@@ -16,23 +17,7 @@ namespace dlog {
 template <typename ...Tags>
 class LogBase;
 
-using Log = LogBase<DateTimeTag, ThreadIdTag>;
-
-enum LogLevel {
-    DEBUG,
-    INFO,
-    WARN,
-    ERROR,
-    WTF,
-
-    LOG_LEVEL_LIMIT
-};
-
-template <LogLevel LEVEL>
-static constexpr char levelFormat() noexcept {
-    static_assert(LEVEL >= 0 && LEVEL < LOG_LEVEL_LIMIT, "check log level config.");
-    return "DIWE?"[LEVEL];
-}
+using Log = LogBase<DateTimeTag, ThreadIdTag, LogLevelTagPlaceHolder>;
 
 template <typename ...Tags>
 class LogBase {
@@ -120,8 +105,9 @@ template <typename T, typename ...Ts> inline constexpr size_t iovcnt(T &&t, Ts &
 template <typename ...Tags>
 template <LogLevel LEVEL, typename ...Ts>
 inline void LogBase<Tags...>::logFormat(Ts &&...msg) {
-    using SortedTags = typename Sort<std::tuple<Tags...>>::type;
-    LogBaseImpl::log(TagsResolver<SortedTags, Tags, std::tuple<Tags...>>::format()..., levelFormat<LEVEL>(), std::forward<Ts>(msg)...);
+    using SortedTags = typename Sort<std::tuple<LogLevelTag<LEVEL>, Tags...>>::type;
+    using OrderedTuple = std::tuple<Tags..., LogLevelTag<LEVEL>>;
+    LogBaseImpl::log(TagsResolver<SortedTags, Tags, OrderedTuple>::format()..., std::forward<Ts>(msg)...);
 }
 
 template <typename ...Ts>

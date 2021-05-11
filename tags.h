@@ -4,6 +4,7 @@
 #include "chrono.h"
 #include "io.h"
 #include "tid.h"
+#include "level.h"
 #include "sort.h"
 namespace dlog {
 
@@ -18,6 +19,15 @@ struct ThreadIdTag {
         return Tid::format();
     }
 };
+
+template <LogLevel LEVEL>
+struct LogLevelTag {
+    static char format() {
+        return levelFormat<LEVEL>();
+    }
+};
+
+struct LogLevelTagPlaceHolder {};
 
 /// tuple helper
 
@@ -68,8 +78,15 @@ struct Elem;
 template <>
 struct Elem<DateTimeTag>: Key<DateTimeTag>, Value<1> {};
 
+template <LogLevel LEVEL>
+struct Elem<LogLevelTag<LEVEL>>: Key<LogLevelTag<LEVEL>>, Value<2> {};
+
 template <>
-struct Elem<ThreadIdTag>: Key<ThreadIdTag>, Value<2> {};
+struct Elem<ThreadIdTag>: Key<ThreadIdTag>, Value<3> {};
+
+template <>
+struct Elem<LogLevelTagPlaceHolder>: Key<LogLevelTagPlaceHolder>, Value<1024> {};
+
 
 } // dlog
 #endif
