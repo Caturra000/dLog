@@ -1,11 +1,10 @@
 #ifndef __DLOG_LOG_H__
 #define __DLOG_LOG_H__
 #include <bits/stdc++.h>
+#include "io.h"
 #include "resolve.h"
-#include "stream.h"
 #include "sched.h"
-#include "chrono.h"
-#include "tid.h"
+#include "tags.h"
 namespace dlog {
 
 #define DLOG_DEBUG(...) Log::debug(__FILE__, __LINE__, __VA_ARGS__)
@@ -14,6 +13,28 @@ namespace dlog {
 #define DLOG_ERROR(...) Log::error(__FILE__, __LINE__, __VA_ARGS__)
 #define DLOG_WTF(...) Log::wtf(__FILE__, __LINE__, __VA_ARGS__)
 
+template <typename ...Tags>
+class LogBase;
+
+using Log = LogBase<DateTimeTag, ThreadIdTag>;
+
+enum LogLevel {
+    DEBUG,
+    INFO,
+    WARN,
+    ERROR,
+    WTF,
+
+    LOG_LEVEL_LIMIT
+};
+
+template <LogLevel LEVEL>
+static constexpr char levelFormat() noexcept {
+    static_assert(LEVEL >= 0 && LEVEL < LOG_LEVEL_LIMIT, "check log level config.");
+    return "DIWE?"[LEVEL];
+}
+
+template <typename ...Tags>
 class LogBase {
 public:
     static Wthread& init() {
@@ -37,54 +58,43 @@ public:
     static void wtf(Ts &&...msg);
 
 private:
-    enum LogLevel {
-        DEBUG,
-        INFO,
-        WARN,
-        ERROR,
-        WTF,
-
-        LOG_LEVEL_LIMIT
-    };
-
-    template <LogLevel LEVEL>
-    static constexpr char levelFormat() noexcept {
-        static_assert(LEVEL >= 0 && LEVEL < LOG_LEVEL_LIMIT, "check log level config.");
-        return "DIWE?"[LEVEL];
-    }
-
-    template <typename ...Ts>
-    static void log(Ts &&...msg);
-
     template <LogLevel Level, typename ...Ts>
     static void logFormat(Ts &&...msg);
 
 };
 
-using Log = LogBase;
+struct LogBaseImpl {
+    template <typename ...Ts>
+    static void log(Ts &&...msg);
+};
 
+template <typename ...Tags>
 template <typename ...Ts>
-inline void LogBase::debug(Ts &&...msg) {
+inline void LogBase<Tags...>::debug(Ts &&...msg) {
     logFormat<LogLevel::DEBUG>(std::forward<Ts>(msg)...);
 }
 
+template <typename ...Tags>
 template <typename ...Ts>
-inline void LogBase::info(Ts &&...msg) {
+inline void LogBase<Tags...>::info(Ts &&...msg) {
     logFormat<LogLevel::INFO>(std::forward<Ts>(msg)...);
 }
 
+template <typename ...Tags>
 template <typename ...Ts>
-inline void LogBase::warn(Ts &&...msg) {
+inline void LogBase<Tags...>::warn(Ts &&...msg) {
     logFormat<LogLevel::WARN>(std::forward<Ts>(msg)...);
 }
 
+template <typename ...Tags>
 template <typename ...Ts>
-inline void LogBase::error(Ts &&...msg) {
+inline void LogBase<Tags...>::error(Ts &&...msg) {
     logFormat<LogLevel::ERROR>(std::forward<Ts>(msg)...);
 }
 
+template <typename ...Tags>
 template <typename ...Ts>
-inline void LogBase::wtf(Ts &&...msg) {
+inline void LogBase<Tags...>::wtf(Ts &&...msg) {
     logFormat<LogLevel::WTF>(std::forward<Ts>(msg)...);
 }
 
@@ -107,9 +117,15 @@ template <typename T, typename ...Ts> inline constexpr size_t iovcnt(T &&t, Ts &
     return iovcnt(std::forward<T>(t)) + iovcnt(std::forward<Ts>(ts)...); 
 }
 
+template <typename ...Tags>
+template <LogLevel LEVEL, typename ...Ts>
+inline void LogBase<Tags...>::logFormat(Ts &&...msg) {
+    using SortedTags = typename Sort<std::tuple<Tags...>>::type; // TODO unused type
+    LogBaseImpl::log(TagResolver<Tags>::format()..., levelFormat<LEVEL>(), std::forward<Ts>(msg)...);
+}
 
 template <typename ...Ts>
-inline void LogBase::log(Ts &&...msg) {
+inline void LogBaseImpl::log(Ts &&...msg) {
     char tmp[bufcnt(msg...)];
     const char *tmpref[strcnt(msg...)]; // an array stores char_ptr
     IoVector ioves[iovcnt(msg...)];
@@ -124,10 +140,6 @@ inline void LogBase::log(Ts &&...msg) {
     Scheduler::log(args);
 }
 
-template <LogBase::LogLevel LEVEL, typename ...Ts>
-inline void LogBase::logFormat(Ts &&...msg) {
-    log(Chrono::format(Chrono::now()), levelFormat<LEVEL>(), Tid::format(), std::forward<Ts>(msg)...);
-}
 
 } // dlog
 #endif
