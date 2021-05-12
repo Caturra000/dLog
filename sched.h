@@ -1,10 +1,13 @@
 #ifndef __DLOG_SCHED_H__
 #define __DLOG_SCHED_H__
 #include <bits/stdc++.h>
+#include "config.h"
 #include "shared.h"
 #include "stream.h"
 #include "resolve.h"
 #include "fs.h"
+#include "io.h"
+#include "chrono.h"
 namespace dlog {
 
 std::mutex rmtx, smtx; // read_mutex swap_mutex
@@ -22,6 +25,7 @@ private:
     std::thread writer;
     File file;
     void writeFunc();
+    static std::string generateFileName();
 }; // wthread;
 
 // interact with wthread
@@ -44,7 +48,7 @@ struct Scheduler {
 
 
 inline Wthread::Wthread()
-    : file("test.log"), // hard code
+    : file(generateFileName()),
       writer {[this] { writeFunc(); }} {}
 
 inline Wthread::~Wthread() {
@@ -87,8 +91,25 @@ inline void Wthread::writeFunc() {
             }
             
         }
+        if(file.updatable(cur)) {
+            file.update(generateFileName());
+        }
         file.append(buf[idx], cur);
     }
+}
+
+inline std::string Wthread::generateFileName() {
+    std::array<IoVector, 2> dateTime = Chrono::format(Chrono::now());
+    std::string add = std::string(dateTime[0].base) + '-' + std::string(dateTime[1].base);
+    std::for_each(add.begin(), add.end(), [](char &ch) {
+        if(ch == ' ' || ch == ':') ch = '-';
+    });
+
+    return std::string(staticConfig.log_dir) + '/'
+          + staticConfig.log_filename
+          + '.' + add
+          + staticConfig.log_filename_extension;
+    
 }
 
 } // dlog
