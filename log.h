@@ -1,6 +1,7 @@
 #ifndef __DLOG_LOG_H__
 #define __DLOG_LOG_H__
 #include <bits/stdc++.h>
+#include "config.h"
 #include "io.h"
 #include "resolve.h"
 #include "sched.h"
@@ -56,31 +57,31 @@ struct LogBaseImpl {
 template <typename ...Tags>
 template <typename ...Ts>
 inline void LogBase<Tags...>::debug(Ts &&...msg) {
-    logFormat<LogLevel::DEBUG>(std::forward<Ts>(msg)...);
+    if(staticConfig.debugOn) logFormat<LogLevel::DEBUG>(std::forward<Ts>(msg)...);
 }
 
 template <typename ...Tags>
 template <typename ...Ts>
 inline void LogBase<Tags...>::info(Ts &&...msg) {
-    logFormat<LogLevel::INFO>(std::forward<Ts>(msg)...);
+    if(staticConfig.infoOn) logFormat<LogLevel::INFO>(std::forward<Ts>(msg)...);
 }
 
 template <typename ...Tags>
 template <typename ...Ts>
 inline void LogBase<Tags...>::warn(Ts &&...msg) {
-    logFormat<LogLevel::WARN>(std::forward<Ts>(msg)...);
+    if(staticConfig.warnOn) logFormat<LogLevel::WARN>(std::forward<Ts>(msg)...);
 }
 
 template <typename ...Tags>
 template <typename ...Ts>
 inline void LogBase<Tags...>::error(Ts &&...msg) {
-    logFormat<LogLevel::ERROR>(std::forward<Ts>(msg)...);
+    if(staticConfig.errorOn) logFormat<LogLevel::ERROR>(std::forward<Ts>(msg)...);
 }
 
 template <typename ...Tags>
 template <typename ...Ts>
 inline void LogBase<Tags...>::wtf(Ts &&...msg) {
-    logFormat<LogLevel::WTF>(std::forward<Ts>(msg)...);
+    if(staticConfig.wtfOn) logFormat<LogLevel::WTF>(std::forward<Ts>(msg)...);
 }
 
 template <typename T> inline constexpr size_t bufcnt(T &&) { return StreamTraits<T>::size; }
