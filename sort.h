@@ -123,16 +123,16 @@ struct Find {
 
 
 template <typename T, typename ...Ts>
-struct Sort;
+struct Sort1;
 
 // minpos mid
 // no std::tuple
 template <ssize_t MinPos, ssize_t MaxIdx, typename T, typename ...Ts>
-struct Sort1 {
+struct Sort2 {
     using check = std::enable_if_t<MinPos+1 <= MaxIdx && MinPos-1 >= 0>;
     using type = typename Concat <
         typename Select<MinPos, MinPos, T, Ts...>::type,
-        typename Sort<
+        typename Sort1<
             typename Concat <
                 typename Select<0, MinPos-1, T, Ts...>::type,
                 typename Select<MinPos+1, MaxIdx, T, Ts...>::type
@@ -143,37 +143,41 @@ struct Sort1 {
 
 // minpos == 0
 template <ssize_t MaxIdx, typename T, typename ...Ts>
-struct Sort1<0, MaxIdx, T, Ts...> {
+struct Sort2<0, MaxIdx, T, Ts...> {
     using type = typename Concat <
         std::tuple<T>,
-        typename Sort<typename Select<1, MaxIdx, T, Ts...>::type>::type
+        typename Sort1<typename Select<1, MaxIdx, T, Ts...>::type>::type
     >::type;
 };
 
 // minpos == end
 template <ssize_t MaxIdx, typename T, typename ...Ts>
-struct Sort1<MaxIdx, MaxIdx, T, Ts...> {
+struct Sort2<MaxIdx, MaxIdx, T, Ts...> {
     // using type = std::tuple<int>;
     using type = typename Concat<
                      typename Select<MaxIdx, MaxIdx, T, Ts...>::type,
-                     typename Sort< typename Select<0, MaxIdx-1, T, Ts...>::type >::type
+                     typename Sort1< typename Select<0, MaxIdx-1, T, Ts...>::type >::type
                  >::type;
 };
 
-// interface
 template <typename T, typename ...Ts>
-struct Sort;
+struct Sort1;
 
 template <typename T, typename ...Ts>
-struct Sort<std::tuple<T, Ts...>> {
-    using type = typename Sort1<Find<typename Min<T, Ts...>::type, T, Ts...>::value, sizeof...(Ts), T, Ts...>::type;
+struct Sort1<std::tuple<T, Ts...>> {
+    using type = typename Sort2<Find<typename Min<T, Ts...>::type, T, Ts...>::value, sizeof...(Ts), T, Ts...>::type;
 };
 
 template <typename T>
-struct Sort<std::tuple<T>> {
+struct Sort1<std::tuple<T>> {
     using type = std::tuple<T>;
 };
 
+// interface
+template <typename ...Ts>
+struct Sort {
+    using type = typename Sort1<std::tuple<Ts...>>::type;
+};
 
 } // dlog
 #endif

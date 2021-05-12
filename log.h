@@ -105,7 +105,7 @@ template <typename T, typename ...Ts> inline constexpr size_t iovcnt(T &&t, Ts &
 template <typename ...Tags>
 template <LogLevel LEVEL, typename ...Ts>
 inline void LogBase<Tags...>::logFormat(Ts &&...msg) {
-    using SortedTags = typename Sort<std::tuple<LogLevelTag<LEVEL>, Tags...>>::type;
+    using SortedTags = typename Sort<LogLevelTag<LEVEL>, Tags...>::type;
     using OrderedTuple = std::tuple<Tags..., LogLevelTag<LEVEL>>;
     LogBaseImpl::log(TagsResolver<SortedTags, Tags, OrderedTuple>::format()..., std::forward<Ts>(msg)...);
 }
