@@ -186,7 +186,7 @@ struct file_rolling_interval: public config {
         : config(type::ROLLING) { _fileRollingInterval = fileRollingInterval; }
 };
 
-constexpr StaticConfig globalConfigBoot {
+constexpr static StaticConfig globalConfigBoot {
 #include "../dlog.conf"
 };
 
@@ -195,7 +195,7 @@ constexpr StaticConfig globalConfigBoot {
 
 
 
-constexpr const StaticConfig &staticConfig = conf::globalConfigBoot;
+constexpr const static StaticConfig &staticConfig = conf::globalConfigBoot;
 
 } // dlog
 #endif

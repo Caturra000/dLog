@@ -9,18 +9,31 @@
 #include "chrono.h"
 namespace dlog {
 
-// shared mutable variables
-// protected by namespace
 
-constexpr size_t DLOG_BUFSIZE = 1<<20;
-char buf[2][DLOG_BUFSIZE];
-size_t ridx = 0, rcur = 0;
-size_t widx = 1, wcur = 0; 
 
-std::mutex rmtx, smtx; // read_mutex swap_mutex
-std::condition_variable cond;
-using namespace std::literals::chrono_literals;
-bool sflag = true; // swap finished
+// shared for writer thread (backend) and scheduler (frontend)
+// use singleton instead of global variables as a inline field
+struct Shared {
+
+    // buffers
+
+    constexpr static size_t DLOG_BUFSIZE = 1<<20;
+
+    char buf[2][DLOG_BUFSIZE];
+    size_t ridx = 0, rcur = 0;
+    size_t widx = 1, wcur = 0;
+
+    // concurrency
+
+    std::mutex rmtx, smtx; // read_mutex swap_mutex
+    std::condition_variable cond;
+    bool sflag = true; // swap finished
+
+    static Shared& singleton() {
+        static Shared instance;
+        return instance;
+    }
+};
 
 // a writer thread
 class Wthread {
@@ -38,17 +51,18 @@ private:
 // interact with wthread
 struct Scheduler {
     static void log(ResolveContext &args) {
-        std::lock_guard<std::mutex> lk{rmtx};
-        if(rcur + Resolver::calspace(args) >= sizeof(buf[0])) {
+        auto &s = Shared::singleton();
+        std::lock_guard<std::mutex> lk{s.rmtx};
+        if(s.rcur + Resolver::calspace(args) >= sizeof(s.buf[0])) {
             {
-                std::unique_lock<std::mutex> _{smtx};
-                sflag = false;
+                std::unique_lock<std::mutex> _{s.smtx};
+                s.sflag = false;
             }
-            while(!sflag) cond.notify_one();
+            while(!s.sflag) s.cond.notify_one();
         }
-        auto rbuf = buf[ridx];
-        Resolver::vec2buf(args, rbuf + rcur);
-        rcur += Resolver::calspace(args);
+        auto rbuf = s.buf[s.ridx];
+        Resolver::vec2buf(args, rbuf + s.rcur);
+        s.rcur += Resolver::calspace(args);
     }
 };
 
@@ -65,27 +79,29 @@ inline Wthread::~Wthread() {
 }
 
 inline void Wthread::writeFunc() {
+    using namespace std::literals::chrono_literals;
     int cur, idx;
+    auto &s = Shared::singleton();
     auto swap = [&] {
-        ridx ^= 1;
-        widx ^= 1;
-        wcur = rcur;
-        rcur = 0;
-        sflag = true; // swap finished
-        cur = wcur;
-        wcur = 0;
-        idx = widx;
+        s.ridx ^= 1;
+        s.widx ^= 1;
+        s.wcur = s.rcur;
+        s.rcur = 0;
+        s.sflag = true; // swap finished
+        cur = s.wcur;
+        s.wcur = 0;
+        idx = s.widx;
         
     };
     while(true) {
         {
-            std::unique_lock<std::mutex> lk{smtx};
-            auto request = cond.wait_for(lk, 10ms, [] { return !sflag; });
+            std::unique_lock<std::mutex> lk{s.smtx};
+            auto request = s.cond.wait_for(lk, 10ms, [&] { return !s.sflag; });
             if(request) {
                 swap();
-            } else if(rmtx.try_lock()) { // use try, no dead lock
+            } else if(s.rmtx.try_lock()) { // use try, no dead lock
                 // corner case, timeout
-                std::lock_guard<std::mutex> _{rmtx, std::adopt_lock};
+                std::lock_guard<std::mutex> _{s.rmtx, std::adopt_lock};
                 swap();
             } else {
                 continue;
@@ -94,7 +110,7 @@ inline void Wthread::writeFunc() {
         if(file.updatable(cur)) {
             file.update(generateFileName());
         }
-        file.append(buf[idx], cur);
+        file.append(s.buf[idx], cur);
     }
 }
 

@@ -4,6 +4,7 @@
 // test
 int main() {
     using namespace dlog;
+    using namespace std::chrono_literals;
     Log::init();
     // Log::info(1, -223ll, "789", "12.345", 78.1, 78.0, 78.123445, 78.999, 0.0001);
     // Log::info(1, -223ll, "789", "12.345", 78.1, 78.0, 78.123445, 78.999, 0.0001);
