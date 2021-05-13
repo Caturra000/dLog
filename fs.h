@@ -51,6 +51,7 @@ private:
     
 };
 
+/// impl
 
 inline void File::swap(File &that) {
     std::swap(this->_path, that._path);

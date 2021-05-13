@@ -18,7 +18,6 @@ template <typename T>
 struct ExtraStream;
 
 struct Stream {
-
     template <typename T>
     using VoidIfInt = std::enable_if_t<std::is_integral<T>::value>;
     template <typename T>
@@ -51,7 +50,7 @@ struct Stream {
     }
 };
 
-
+/// impl
 
 template <typename T>
 inline Stream::VoidIfInt<T>

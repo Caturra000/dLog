@@ -155,9 +155,9 @@ template <ssize_t MaxIdx, typename T, typename ...Ts>
 struct Sort2<MaxIdx, MaxIdx, T, Ts...> {
     // using type = std::tuple<int>;
     using type = typename Concat<
-                     typename Select<MaxIdx, MaxIdx, T, Ts...>::type,
-                     typename Sort1< typename Select<0, MaxIdx-1, T, Ts...>::type >::type
-                 >::type;
+        typename Select<MaxIdx, MaxIdx, T, Ts...>::type,
+        typename Sort1< typename Select<0, MaxIdx-1, T, Ts...>::type >::type
+    >::type;
 };
 
 template <typename T, typename ...Ts>

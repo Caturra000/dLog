@@ -32,10 +32,10 @@ struct StaticConfig {
 // constexpr const StaticConfig &staticConfig
 
 
+/// impl
 
 
-
-namespace conf { // internal, dont use outside
+namespace conf { // internal impl, don't use outside
 
 using namespace std::chrono_literals;
 

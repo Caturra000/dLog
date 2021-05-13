@@ -5,7 +5,7 @@
 #include "io.h"
 namespace dlog {
 
-struct ResolveArgs {
+struct ResolveContext {
     char *local; // local stack buffer
     size_t cur; // current index of local
     IoVector *ioves;
@@ -30,64 +30,73 @@ struct ResolveArgs {
 };
 
 struct Resolver {
-    template <typename T>
-    static void resolve(ResolveArgs &args, T &&msg) {
-        resolveDispatch(args, std::forward<T>(msg));
-    }
+    template <typename T> static void resolve(ResolveContext &ctx, T &&msg);
+    template <typename T, typename ...Ts> static void resolve(ResolveContext &ctx, T&&msg, Ts &&...others);
 
-    template <typename T, typename ...Ts>
-    static void resolve(ResolveArgs &args, T&&msg, Ts &&...others) {
-        resolveDispatch(args, std::forward<T>(msg));
-        resolve(args, std::forward<Ts>(others)...);
-    }
-
-    static size_t calspace(ResolveArgs &args) {
-        return args.total + args.count;
-    }
-
-    static void vec2buf(ResolveArgs &args, char *buf) {
-        IoVector *ioves = args.ioves;
-        size_t offset = 0;
-        for(size_t i = 0; i < args.count; ++i) {
-            std::memcpy(buf + offset, ioves[i].base, ioves[i].len);
-            offset += ioves[i].len;
-            if(i == args.count-1) buf[offset] = '\n';
-            else buf[offset] = ' ';
-            ++offset;
-        }
-    }
+    static size_t calspace(ResolveContext &ctx) { return ctx.total + ctx.count; }
+    static void vec2buf(ResolveContext &ctx, char *buf);
 
 private:
-
-    template <typename T>
-    static void resolveDispatch(ResolveArgs &args, T &&msg) {
-        size_t len = Stream::parseLength(std::forward<T>(msg));
-        char *buf = args.currentLocal();
-        Stream::parse(buf, std::forward<T>(msg), len);
-        args.updateLocal(len);
-    }
-
-    template <size_t N>
-    static void resolveDispatch(ResolveArgs &args, const char (&msg)[N]) {
-        static_assert(N >= 1, "N must be positive.");
-        size_t len = N-1;
-        args.updateExternal(msg, len);
-    }
-
-    static void resolveDispatch(ResolveArgs &args, IoVector iov) {
-        args.updateExternal(iov.base, iov.len);
-    }
-
-    template <size_t N>
-    static void resolveDispatch(ResolveArgs &args, std::array<IoVector, N> &ioves) {
-        for(auto &iov : ioves) resolveDispatch(args, iov);
-    }
-
-    template <size_t N>
-    static void resolveDispatch(ResolveArgs &args, std::array<IoVector, N> &&ioves) {
-        resolveDispatch(args, ioves);
-    }
+    template <typename T> static void resolveDispatch(ResolveContext &ctx, T &&msg);
+    template <size_t N> static void resolveDispatch(ResolveContext &ctx, const char (&msg)[N]);
+    static void resolveDispatch(ResolveContext &ctx, IoVector iov);
+    template <size_t N> static void resolveDispatch(ResolveContext &ctx, std::array<IoVector, N> &ioves);
+    template <size_t N> static void resolveDispatch(ResolveContext &ctx, std::array<IoVector, N> &&ioves);
 };
+
+/// impl
+
+template <typename T>
+inline void Resolver::resolve(ResolveContext &ctx, T &&msg) {
+    resolveDispatch(ctx, std::forward<T>(msg));
+}
+
+template <typename T, typename ...Ts>
+inline void Resolver::resolve(ResolveContext &ctx, T&&msg, Ts &&...others) {
+    resolveDispatch(ctx, std::forward<T>(msg));
+    resolve(ctx, std::forward<Ts>(others)...);
+}
+
+inline void Resolver::vec2buf(ResolveContext &ctx, char *buf) {
+    IoVector *ioves = ctx.ioves;
+    size_t offset = 0;
+    for(size_t i = 0; i < ctx.count; ++i) {
+        std::memcpy(buf + offset, ioves[i].base, ioves[i].len);
+        offset += ioves[i].len;
+        if(i == ctx.count-1) buf[offset] = '\n';
+        else buf[offset] = ' ';
+        ++offset;
+    }
+}
+
+template <typename T>
+inline void Resolver::resolveDispatch(ResolveContext &ctx, T &&msg) {
+    size_t len = Stream::parseLength(std::forward<T>(msg));
+    char *buf = ctx.currentLocal();
+    Stream::parse(buf, std::forward<T>(msg), len);
+    ctx.updateLocal(len);
+}
+
+template <size_t N>
+inline void Resolver::resolveDispatch(ResolveContext &ctx, const char (&msg)[N]) {
+    static_assert(N >= 1, "N must be positive.");
+    size_t len = N-1;
+    ctx.updateExternal(msg, len);
+}
+
+inline void Resolver::resolveDispatch(ResolveContext &ctx, IoVector iov) {
+    ctx.updateExternal(iov.base, iov.len);
+}
+
+template <size_t N>
+inline void Resolver::resolveDispatch(ResolveContext &ctx, std::array<IoVector, N> &ioves) {
+    for(auto &iov : ioves) resolveDispatch(ctx, iov);
+}
+
+template <size_t N>
+inline void Resolver::resolveDispatch(ResolveContext &ctx, std::array<IoVector, N> &&ioves) {
+    resolveDispatch(ctx, ioves);
+}
 
 } // dlog
 #endif

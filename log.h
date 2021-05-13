@@ -54,10 +54,12 @@ struct LogBaseImpl {
     static void log(Ts &&...msg);
 };
 
+/// impl
+
 template <typename ...Tags>
 template <typename ...Ts>
 inline void LogBase<Tags...>::debug(Ts &&...msg) {
-    if(staticConfig.debugOn) logFormat<LogLevel::DEBUG>(std::forward<Ts>(msg)...);
+    if /*constexpr*/ (staticConfig.debugOn) logFormat<LogLevel::DEBUG>(std::forward<Ts>(msg)...);
 }
 
 template <typename ...Tags>
@@ -116,7 +118,7 @@ inline void LogBaseImpl::log(Ts &&...msg) {
     char tmp[bufcnt(msg...)];
     const char *tmpref[strcnt(msg...)]; // an array stores char_ptr
     IoVector ioves[iovcnt(msg...)];
-    ResolveArgs args {
+    ResolveContext args {
         .local = tmp,
         .cur = 0,
         .ioves = ioves,
@@ -126,7 +128,6 @@ inline void LogBaseImpl::log(Ts &&...msg) {
     Resolver::resolve(args, std::forward<Ts>(msg)...);
     Scheduler::log(args);
 }
-
 
 } // dlog
 #endif
