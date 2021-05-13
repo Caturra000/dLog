@@ -1,9 +1,7 @@
 #include <bits/stdc++.h>
-#include "log.h"
+#include "dlog.hpp"
 
-// test-version
-
-
+// test
 int main() {
     using namespace dlog;
     Log::init();
