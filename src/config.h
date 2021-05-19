@@ -187,7 +187,11 @@ struct file_rolling_interval: public config {
 };
 
 constexpr static StaticConfig globalConfigBoot {
+#ifdef DLOG_CONF_PATH
+#include DLOG_CONF_PATH
+#else
 #include "../dlog.conf"
+#endif
 };
 
 } // conf
