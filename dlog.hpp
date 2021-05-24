@@ -1,4 +1,4 @@
-// protable single header version
+// portable single header version
 // autogen by: https://github.com/Viatorus/quom
 // dlog version: 242597476d9a584d40059142437e9d784a0c5617
 
