@@ -34,7 +34,7 @@ struct Resolver {
     template <typename T, typename ...Ts> static void resolve(ResolveContext &ctx, T&&msg, Ts &&...others);
 
     static size_t calspace(ResolveContext &ctx) { return ctx.total + ctx.count; }
-    static void vec2buf(ResolveContext &ctx, char *buf);
+    static void put(ResolveContext &ctx, char *buf);
 
 private:
     template <typename T> static void resolveDispatch(ResolveContext &ctx, T &&msg);
@@ -57,7 +57,7 @@ inline void Resolver::resolve(ResolveContext &ctx, T&&msg, Ts &&...others) {
     resolve(ctx, std::forward<Ts>(others)...);
 }
 
-inline void Resolver::vec2buf(ResolveContext &ctx, char *buf) {
+inline void Resolver::put(ResolveContext &ctx, char *buf) {
     IoVector *ioves = ctx.ioves;
     size_t offset = 0;
     for(size_t i = 0; i < ctx.count; ++i) {

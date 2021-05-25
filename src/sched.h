@@ -50,7 +50,7 @@ private:
 
 // interact with wthread
 struct Scheduler {
-    static void log(ResolveContext &args) {
+    static void apply(ResolveContext &args) {
         auto &s = Shared::singleton();
         std::lock_guard<std::mutex> lk{s.rmtx};
         if(s.rcur + Resolver::calspace(args) >= sizeof(s.buf[0])) {
@@ -61,7 +61,7 @@ struct Scheduler {
             while(!s.sflag) s.cond.notify_one();
         }
         auto rbuf = s.buf[s.ridx];
-        Resolver::vec2buf(args, rbuf + s.rcur);
+        Resolver::put(args, rbuf + s.rcur);
         s.rcur += Resolver::calspace(args);
     }
 };

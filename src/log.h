@@ -126,7 +126,7 @@ inline void LogBaseImpl::log(Ts &&...msg) {
         .total = 0
     };
     Resolver::resolve(args, std::forward<Ts>(msg)...);
-    Scheduler::log(args);
+    Scheduler::apply(args);
 }
 
 } // dlog
