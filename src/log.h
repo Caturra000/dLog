@@ -7,14 +7,9 @@
 #include "sched.h"
 #include "level.h"
 #include "tags.h"
-#include "preprocess.h"
+#include "mstr.h"
+#include "macro.h"
 namespace dlog {
-
-#define DLOG_DEBUG(...) Log::debug(DLOG_FILENAME, __LINE__, __VA_ARGS__)
-#define DLOG_INFO(...) Log::info(DLOG_FILENAME, __LINE__, __VA_ARGS__)
-#define DLOG_WARN(...) Log::warn(DLOG_FILENAME, __LINE__, __VA_ARGS__)
-#define DLOG_ERROR(...) Log::error(DLOG_FILENAME, __LINE__, __VA_ARGS__)
-#define DLOG_WTF(...) Log::wtf(DLOG_FILENAME, __LINE__, __VA_ARGS__)
 
 template <typename ...Tags>
 class LogBase;

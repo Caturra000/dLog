@@ -14,10 +14,12 @@ struct StaticConfig {
     bool errorOn;
     bool wtfOn;
     std::chrono::milliseconds fileRollingInterval;
+    size_t msg_align;
     constexpr StaticConfig(const char *log_dir, const char *log_filename, const char *log_filename_extension,
         size_t fileMaxSize,
         bool debugOn, bool infoOn, bool warnOn, bool errorOn, bool wtfOn,
-        std::chrono::milliseconds fileRollingInterval)
+        std::chrono::milliseconds fileRollingInterval,
+        size_t msg_align)
         : log_dir(log_dir),
           log_filename(log_filename),
           log_filename_extension(log_filename_extension),
@@ -27,7 +29,8 @@ struct StaticConfig {
           warnOn(warnOn),
           errorOn(errorOn),
           wtfOn(wtfOn),
-          fileRollingInterval(fileRollingInterval) {}
+          fileRollingInterval(fileRollingInterval),
+          msg_align(msg_align) {}
 };
 // constexpr const StaticConfig &staticConfig
 
@@ -49,6 +52,7 @@ struct config {
         LOG_FILTER,
         MAX_FILE_SIZE,
         ROLLING,
+        MSG_ALIGN,
     } _type;
 
     const char *_path {"log_default.log"};
@@ -59,6 +63,7 @@ struct config {
     size_t _fileMaxSize {};
     size_t _logOpenFlags[5] {};
     std::chrono::milliseconds _fileRollingInterval {24h};
+    size_t _msg_align {30};
 
     constexpr config(enum type type)
         : _type(type) {}
@@ -85,6 +90,9 @@ struct config {
                     case type::ROLLING:
                         _fileRollingInterval = l._fileRollingInterval;
                     break;
+                    case type::MSG_ALIGN:
+                        _msg_align = l._msg_align;
+                    break;
                     default:
                     break;
                 }
@@ -108,7 +116,8 @@ struct config {
             _log_dir, _log_filename, _log_filename_extension,
             _fileMaxSize,
             _logOpenFlags[0], _logOpenFlags[1], _logOpenFlags[2], _logOpenFlags[3], _logOpenFlags[4],
-            _fileRollingInterval
+            _fileRollingInterval,
+            _msg_align
         );
     }
 };
@@ -125,7 +134,7 @@ struct log_path: public config {
         : config(type::LOG_PATH),
           _path_type(path_type) {}
     explicit constexpr log_path(std::initializer_list<log_path> children)
-        : config(type::LOG_PATH), 
+        : config(type::LOG_PATH),
           _path_type(path_type::LOG_PATH) {
         for(const auto &l: children) {
             switch(l._path_type) {
@@ -167,6 +176,11 @@ struct log_filter: public config {
             _logOpenFlags[level] = true;
         }
     }
+};
+
+struct msg_align: public config {
+    explicit constexpr msg_align(size_t align)
+        : config(type::MSG_ALIGN) { _msg_align = align; }
 };
 
 // need -Wno-literal-suffix
