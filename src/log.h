@@ -9,6 +9,7 @@
 #include "tags.h"
 #include "mstr.h"
 #include "macro.h"
+#include "filename.h"
 namespace dlog {
 
 template <typename ...Tags>

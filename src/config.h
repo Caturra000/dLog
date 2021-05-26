@@ -63,7 +63,7 @@ struct config {
     size_t _fileMaxSize {};
     size_t _logOpenFlags[5] {};
     std::chrono::milliseconds _fileRollingInterval {24h};
-    size_t _msg_align {30};
+    size_t _msg_align {20};
 
     constexpr config(enum type type)
         : _type(type) {}
