@@ -859,24 +859,7 @@ constexpr static StaticConfig globalConfigBoot {
 #ifdef DLOG_CONF_PATH
 #include DLOG_CONF_PATH
 #else
-config {
-    log_path {
-        log_dir {"."},
-        log_filename {"test"},
-        log_filename_extension {".log"}
-    },
-    log_filter {
-        DEBUG,
-        INFO,
-        WARN
-    },
-    file_max_size {
-        100MB
-    },
-    file_rolling_interval {
-        24h
-    }
-}
+#include "dlog.conf"
 #endif
 };
 
