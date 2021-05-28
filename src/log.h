@@ -7,6 +7,7 @@
 #include "sched.h"
 #include "level.h"
 #include "tags.h"
+#include "msort.h"
 #include "mstr.h"
 #include "macro.h"
 #include "filename.h"
@@ -91,7 +92,7 @@ template <typename T, typename ...Ts> inline constexpr size_t bufcnt(T &&, Ts &&
 template <typename T> inline constexpr size_t strcnt(T&&) { return 0; }
 template <size_t N> inline constexpr size_t strcnt(const char (&)[N]) { return 1; }
 template <typename T, typename ...Ts> inline constexpr size_t strcnt(T &&t, Ts &&...ts) {
-    return strcnt(std::forward<T>(t)) + strcnt(std::forward<Ts>(ts)...); 
+    return strcnt(std::forward<T>(t)) + strcnt(std::forward<Ts>(ts)...);
 }
 
 template <typename T> inline constexpr size_t iovcnt(T&&) { return 1; }
@@ -99,13 +100,13 @@ template <size_t N> inline constexpr size_t iovcnt(const std::array<IoVector, N>
 template <size_t N> inline constexpr size_t iovcnt(std::array<IoVector, N>&) { return N; }
 template <size_t N> inline constexpr size_t iovcnt(std::array<IoVector, N>&&) { return N; }
 template <typename T, typename ...Ts> inline constexpr size_t iovcnt(T &&t, Ts &&...ts) {
-    return iovcnt(std::forward<T>(t)) + iovcnt(std::forward<Ts>(ts)...); 
+    return iovcnt(std::forward<T>(t)) + iovcnt(std::forward<Ts>(ts)...);
 }
 
 template <typename ...Tags>
 template <LogLevel LEVEL, typename ...Ts>
 inline void LogBase<Tags...>::logFormat(Ts &&...msg) {
-    using SortedTags = typename Sort<LogLevelTag<LEVEL>, Tags...>::type;
+    using SortedTags = typename meta::Sort<LogLevelTag<LEVEL>, Tags...>::type;
     using OrderedTuple = std::tuple<Tags..., LogLevelTag<LEVEL>>;
     LogBaseImpl::log(TagsResolver<SortedTags, Tags, OrderedTuple>::format()..., std::forward<Ts>(msg)...);
 }

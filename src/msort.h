@@ -1,7 +1,8 @@
-#ifndef __DLOG_SORT_H__
-#define __DLOG_SORT_H__
+#ifndef __DLOG_MSORT_H__
+#define __DLOG_MSORT_H__
 #include <bits/stdc++.h>
 namespace dlog {
+namespace meta {
 
 /// interface
 
@@ -233,5 +234,6 @@ struct Sort2<MaxIdx, MaxIdx, T, Ts...> {
     >::type;
 };
 
+} // meta
 } // dlog
 #endif

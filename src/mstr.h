@@ -2,6 +2,7 @@
 #define __DLOG__MSTR_H__
 #include <bits/stdc++.h>
 namespace dlog {
+namespace meta {
 
 // example: MetaString<'a', 'b', 'c'>::buf = "abc" ('\0')
 template <char ...Chars>
@@ -45,5 +46,6 @@ struct ContinuousMetaString<0, C>;
 template <size_t N>
 using Whitespace = typename ContinuousMetaString<N, ' '>::type;
 
+} // meta
 } // dlog
 #endif

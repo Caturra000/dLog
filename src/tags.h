@@ -5,7 +5,7 @@
 #include "io.h"
 #include "tid.h"
 #include "level.h"
-#include "sort.h"
+#include "msort.h"
 namespace dlog {
 
 struct DateTimeTag {
@@ -66,11 +66,13 @@ struct TagsResolver;
 template <typename ...Ts, typename ...PlaceHolders, typename PlaceHolder>
 struct TagsResolver<std::tuple<Ts...>, PlaceHolder, std::tuple<PlaceHolders...> > {
     static decltype(auto) format() {
-        constexpr auto pos = Find<PlaceHolder, PlaceHolders...>::value; // 0based
+        constexpr auto pos = meta::Find<PlaceHolder, PlaceHolders...>::value; // 0based
         using Nth = typename TagResolver<pos, std::tuple<Ts...>>::type;
         return Nth::format();
     }
 };
+
+namespace meta {
 
 template <typename V>
 struct Elem;
@@ -87,6 +89,6 @@ struct Elem<ThreadIdTag>: Key<ThreadIdTag>, Value<3> {};
 template <>
 struct Elem<LogLevelTagPlaceHolder>: Key<LogLevelTagPlaceHolder>, Value<1024> {};
 
-
+} // meta
 } // dlog
 #endif
