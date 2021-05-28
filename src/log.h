@@ -16,7 +16,7 @@ namespace dlog {
 template <typename ...Tags>
 class LogBase;
 
-using Log = LogBase<DateTimeTag, ThreadIdTag, LogLevelTagPlaceHolder>;
+using Log = LogBase<DateTimeTag, ThreadIdTag>;
 
 template <typename ...Tags>
 class LogBase {
@@ -45,6 +45,15 @@ private:
     template <LogLevel Level, typename ...Ts>
     static void logFormat(Ts &&...msg);
 
+};
+
+template <typename ...Tags>
+struct LogBaseFacade;
+
+template <typename ...Tags>
+struct LogBaseFacade<std::tuple<Tags...>> {
+    template <typename ...Ts>
+    static void log(Ts &&...msg);
 };
 
 struct LogBaseImpl {
@@ -107,8 +116,17 @@ template <typename ...Tags>
 template <LogLevel LEVEL, typename ...Ts>
 inline void LogBase<Tags...>::logFormat(Ts &&...msg) {
     using SortedTags = typename meta::Sort<LogLevelTag<LEVEL>, Tags...>::type;
-    using OrderedTuple = std::tuple<Tags..., LogLevelTag<LEVEL>>;
-    LogBaseImpl::log(TagsResolver<SortedTags, Tags, OrderedTuple>::format()..., std::forward<Ts>(msg)...);
+    LogBaseFacade<SortedTags>::log(std::forward<Ts>(msg)...);
+}
+
+template <typename ...Tags>
+template <typename ...Ts>
+inline void LogBaseFacade<std::tuple<Tags...>>::log(Ts &&...msg) {
+    LogBaseImpl::log(
+        //TagResolver<meta::Find<Tags, Tags...>::value, std::tuple<Tags...>>::format()...,
+        TagFacade<Tags, std::tuple<Tags...>>::format()...,
+        std::forward<Ts>(msg)...
+    );
 }
 
 template <typename ...Ts>

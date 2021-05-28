@@ -27,8 +27,6 @@ struct LogLevelTag {
     }
 };
 
-struct LogLevelTagPlaceHolder {};
-
 /// tuple helper
 
 template <size_t I, typename T, typename ...Ts>
@@ -44,9 +42,6 @@ struct TupleResolver<I, std::tuple<T, Ts...>> {
     using type = typename TupleResolver<I-1, std::tuple<Ts...>>::type;
 };
 
-
-
-
 template <size_t I, typename ...Ts>
 struct TagResolver;
 
@@ -59,16 +54,15 @@ struct TagResolver<I, std::tuple<Ts...>> {
     }
 };
 
-template <typename ...Ts>
-struct TagsResolver;
+template <typename T, typename U>
+struct TagFacade;
 
-// TODO: simple interface
-template <typename ...Ts, typename ...PlaceHolders, typename PlaceHolder>
-struct TagsResolver<std::tuple<Ts...>, PlaceHolder, std::tuple<PlaceHolders...> > {
+// T in Ts
+template <typename T, typename ...Ts>
+struct TagFacade<T, std::tuple<Ts...>> {
+    constexpr static size_t value = meta::Find<T, Ts...>::value;
     static decltype(auto) format() {
-        constexpr auto pos = meta::Find<PlaceHolder, PlaceHolders...>::value; // 0based
-        using Nth = typename TagResolver<pos, std::tuple<Ts...>>::type;
-        return Nth::format();
+        return TagResolver<value, std::tuple<Ts...>>::format();
     }
 };
 
@@ -85,9 +79,6 @@ struct Elem<LogLevelTag<LEVEL>>: Key<LogLevelTag<LEVEL>>, Value<2> {};
 
 template <>
 struct Elem<ThreadIdTag>: Key<ThreadIdTag>, Value<3> {};
-
-template <>
-struct Elem<LogLevelTagPlaceHolder>: Key<LogLevelTagPlaceHolder>, Value<1024> {};
 
 } // meta
 } // dlog
