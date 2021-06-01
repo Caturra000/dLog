@@ -115,18 +115,14 @@ template <typename T, typename ...Ts> inline constexpr size_t iovcnt(T &&t, Ts &
 template <typename ...Tags>
 template <LogLevel LEVEL, typename ...Ts>
 inline void LogBase<Tags...>::logFormat(Ts &&...msg) {
-    using SortedTags = typename meta::Sort<LogLevelTag<LEVEL>, Tags...>::type;
-    LogBaseFacade<SortedTags>::log(std::forward<Ts>(msg)...);
+    using SortedTagsTuple = typename meta::Sort<LogLevelTag<LEVEL>, Tags...>::type;
+    LogBaseFacade<SortedTagsTuple>::log(std::forward<Ts>(msg)...);
 }
 
 template <typename ...Tags>
 template <typename ...Ts>
 inline void LogBaseFacade<std::tuple<Tags...>>::log(Ts &&...msg) {
-    LogBaseImpl::log(
-        //TagResolver<meta::Find<Tags, Tags...>::value, std::tuple<Tags...>>::format()...,
-        TagFacade<Tags, std::tuple<Tags...>>::format()...,
-        std::forward<Ts>(msg)...
-    );
+    LogBaseImpl::log(Tags::format()..., std::forward<Ts>(msg)...);
 }
 
 template <typename ...Ts>

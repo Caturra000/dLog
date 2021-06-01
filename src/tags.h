@@ -27,45 +27,6 @@ struct LogLevelTag {
     }
 };
 
-/// tuple helper
-
-template <size_t I, typename T, typename ...Ts>
-struct TupleResolver;
-
-template <typename T, typename ...Ts>
-struct TupleResolver<0, std::tuple<T, Ts...>> {
-    using type = T;
-};
-
-template <size_t I, typename T, typename ...Ts>
-struct TupleResolver<I, std::tuple<T, Ts...>> {
-    using type = typename TupleResolver<I-1, std::tuple<Ts...>>::type;
-};
-
-template <size_t I, typename ...Ts>
-struct TagResolver;
-
-// return static method 'format' of i_th type of tuple
-template <size_t I, typename ...Ts>
-struct TagResolver<I, std::tuple<Ts...>> {
-    using type = typename TupleResolver<I, std::tuple<Ts...>>::type;
-    static decltype(auto) format() {
-        return type::format();
-    }
-};
-
-template <typename T, typename U>
-struct TagFacade;
-
-// T in Ts
-template <typename T, typename ...Ts>
-struct TagFacade<T, std::tuple<Ts...>> {
-    constexpr static size_t value = meta::Find<T, Ts...>::value;
-    static decltype(auto) format() {
-        return TagResolver<value, std::tuple<Ts...>>::format();
-    }
-};
-
 namespace meta {
 
 template <typename V>
