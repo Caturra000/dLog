@@ -3,6 +3,7 @@
 #include <bits/stdc++.h>
 #include "stream.h"
 #include "io.h"
+#include "mstr.h"
 namespace dlog {
 
 struct ResolveContext {
@@ -39,6 +40,8 @@ struct Resolver {
 private:
     template <typename T> static void resolveDispatch(ResolveContext &ctx, T &&msg);
     template <size_t N> static void resolveDispatch(ResolveContext &ctx, const char (&msg)[N]);
+    static void resolveDispatch(ResolveContext &ctx, int msg);
+    static void resolveDispatch(ResolveContext &ctx, size_t msg);
     static void resolveDispatch(ResolveContext &ctx, IoVector iov);
     template <size_t N> static void resolveDispatch(ResolveContext &ctx, std::array<IoVector, N> &ioves);
     template <size_t N> static void resolveDispatch(ResolveContext &ctx, std::array<IoVector, N> &&ioves);
@@ -82,6 +85,26 @@ inline void Resolver::resolveDispatch(ResolveContext &ctx, const char (&msg)[N])
     static_assert(N >= 1, "N must be positive.");
     size_t len = N-1;
     ctx.updateExternal(msg, len);
+}
+
+inline void Resolver::resolveDispatch(ResolveContext &ctx, int msg) {
+    constexpr static size_t limit = 10000;
+    using Cache = meta::NumericMetaStringsSequence<limit>;
+    if(msg > 0 && msg < limit) {
+        resolveDispatch(ctx, IoVector{Cache::bufs[msg], Cache::len[msg]});
+    } else {
+        resolveDispatch<>(ctx, msg);
+    }
+}
+
+inline void Resolver::resolveDispatch(ResolveContext &ctx, size_t msg) {
+    constexpr static size_t limit = 10000;
+    using Cache = meta::NumericMetaStringsSequence<limit>;
+    if(msg < limit) {
+        resolveDispatch(ctx, IoVector{Cache::bufs[msg], Cache::len[msg]});
+    } else {
+        resolveDispatch<>(ctx, msg);
+    }
 }
 
 inline void Resolver::resolveDispatch(ResolveContext &ctx, IoVector iov) {
