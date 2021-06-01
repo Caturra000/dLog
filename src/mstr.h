@@ -26,25 +26,40 @@ struct Concat<MetaString<Chars...>> {
 };
 
 // example: ContinuousMetaString<3, 'a'>::type = MetaString<'a', 'a', 'a'>
-template <size_t N, char C>
-struct ContinuousMetaString {
+template <size_t N, char C, bool Eof = true>
+struct Continuous {
     using type = typename Concat<
         MetaString<C>,
-        typename ContinuousMetaString<N-1, C>::type
+        typename Continuous<N-1, C, Eof>::type
     >::type;
 };
 
 template <char C>
-struct ContinuousMetaString<1, C> {
+struct Continuous<1, C> {
     using type = MetaString<C, '\0'>;
 };
 
 template <char C>
-struct ContinuousMetaString<0, C>;
+struct Continuous<1, C, false> {
+    using type = MetaString<C>;
+};
+
+template <char C>
+struct Continuous<0, C> {
+    using type = MetaString<'\0'>;
+};
+
+template <char C>
+struct Continuous<0, C, false> {
+    using type = MetaString<>;
+};
+
+template <size_t N, char C, bool Eof = true>
+using ContinuousMetaString = typename Continuous<N, C, Eof>::type;
 
 // example: Whitespace<5>::buf = "     "
 template <size_t N>
-using Whitespace = typename ContinuousMetaString<N, ' '>::type;
+using Whitespace = ContinuousMetaString<N, ' '>;
 
 
 /// numeric
@@ -92,6 +107,19 @@ struct NumericMetaStringsSequence {
     constexpr static auto bufs = NumericMetaStrings<std::make_index_sequence<N>>::bufs;
     constexpr static auto len = NumericMetaStrings<std::make_index_sequence<N>>::len;
 };
+
+// example: LeadingZeroNumeric<123, 5>::type = MetaString<'0', '0', '1', '2', '3', '\0'>
+template <int I, size_t P, char Z = '0'> // P(prefix) >= length(I)
+struct LeadingZeroNumeric {
+    constexpr static size_t len = length(I);
+    using check = std::enable_if_t<P >= len && I >= 0>;
+    using ztype = ContinuousMetaString<P-len, Z, false>;
+    using ntype = NumericMetaString<I>;
+    using type = typename Concat<ztype, ntype>::type; // MetaString
+};
+
+template <int I, size_t P, char Z = '0'>
+using LeadingZeroNumericMetaString = typename LeadingZeroNumeric<I, P, Z>::type;
 
 } // meta
 } // dlog
