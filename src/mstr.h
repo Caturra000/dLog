@@ -12,6 +12,18 @@ struct MetaString {
 
 template <char ...Chars> constexpr char MetaString<Chars...>::buf[sizeof...(Chars)];
 
+template <typename MStr, size_t P>
+struct MetaStringArray;
+
+template <char ...Chars, size_t N>
+struct MetaStringArray<MetaString<Chars...>, N> {
+    constexpr static const char buf[][N] = { Chars... };
+    using type = decltype(buf); // buf type
+};
+
+template <char ...Chars, size_t N>
+constexpr const char MetaStringArray<MetaString<Chars...>, N>::buf[][N];
+
 template <typename ...Ts>
 struct Concat;
 
@@ -120,6 +132,43 @@ struct LeadingZeroNumeric {
 
 template <int I, size_t P, char Z = '0'>
 using LeadingZeroNumericMetaString = typename LeadingZeroNumeric<I, P, Z>::type;
+
+template <size_t ...Is>
+struct LeadingZeroNumericArrayBuilderImplSequence;
+
+template <size_t P, size_t I, size_t ...Is>
+struct LeadingZeroNumericArrayBuilderImplSequence<P, I, Is...> {
+    using type = typename Concat<
+        LeadingZeroNumericMetaString<I, P>,
+        typename LeadingZeroNumericArrayBuilderImplSequence<P, Is...>::type
+    >::type;
+};
+
+template <size_t P, size_t I>
+struct LeadingZeroNumericArrayBuilderImplSequence<P, I> {
+    using type = LeadingZeroNumericMetaString<I, P>;
+};
+
+template <typename, size_t>
+struct LeadingZeroNumericArrayBuilderImpl;
+
+template <size_t P, size_t ...Is>
+struct LeadingZeroNumericArrayBuilderImpl<std::index_sequence<Is...>, P> {
+    // type -> MetaString
+    using type = typename LeadingZeroNumericArrayBuilderImplSequence<P, Is...>::type;
+};
+
+// TODO -ftemplate-depth overflow
+template <size_t N, size_t P>
+struct LeadingZeroNumericArrayBuilder {
+    using check = std::enable_if_t<N && P >= length(N-1)>;
+    // type -> MetaString
+    using type = typename LeadingZeroNumericArrayBuilderImpl<std::make_index_sequence<N>, P>::type;
+};
+
+// example: LeadingZeroNumericArray<12, 3>::buf = { "001", "002", "003", ... "010", "011" } (const char[12][4])
+template <size_t N, size_t P>
+using LeadingZeroNumericArray = MetaStringArray<typename LeadingZeroNumericArrayBuilder<N, P>::type ,P+1>;
 
 } // meta
 } // dlog
