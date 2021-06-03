@@ -40,10 +40,11 @@ class Wthread {
 public:
     Wthread();
     ~Wthread();
-
+    void kill() { kflag.store(true); }
 private:
-    std::thread writer;
     File file;
+    std::atomic<bool> kflag;
+    std::thread writer;
     void writeFunc();
     static std::string generateFileName();
 }; // wthread;
@@ -70,9 +71,11 @@ struct Scheduler {
 
 inline Wthread::Wthread()
     : file(generateFileName()),
+      kflag(false),
       writer {[this] { writeFunc(); }} {}
 
 inline Wthread::~Wthread() {
+    kill();
     if(writer.joinable()) {
         writer.join();
     }
@@ -91,9 +94,8 @@ inline void Wthread::writeFunc() {
         cur = s.wcur;
         s.wcur = 0;
         idx = s.widx;
-        
     };
-    while(true) {
+    while(!kflag.load()) {
         {
             std::unique_lock<std::mutex> lk{s.smtx};
             auto request = s.cond.wait_for(lk, 10ms, [&] { return !s.sflag; });

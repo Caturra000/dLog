@@ -21,10 +21,9 @@ using Log = LogBase<DateTimeTag, ThreadIdTag>;
 template <typename ...Tags>
 class LogBase {
 public:
-    static Wthread& init() {
-        static Wthread wthread;
-        return wthread;
-    }
+    static void init() { worker(); }
+    static void done() { worker().kill(); }
+    static Wthread& worker();
 
     template <typename ...Ts>
     static void debug(Ts &&...msg);
@@ -62,6 +61,12 @@ struct LogBaseImpl {
 };
 
 /// impl
+
+template <typename ...Tags>
+inline Wthread& LogBase<Tags...>::worker() {
+    static Wthread wthread;
+    return wthread;
+}
 
 template <typename ...Tags>
 template <typename ...Ts>
