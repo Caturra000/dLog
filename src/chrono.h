@@ -2,7 +2,7 @@
 #define __DLOG_CHRONO_H__
 #include <bits/stdc++.h>
 #include "io.h"
-#include "digits.h"
+#include "mstr.h"
 namespace dlog {
 
 // ref: http://howardhinnant.github.io/date_algorithms.html
@@ -106,6 +106,12 @@ inline std::string Chrono::formatDebug(std::chrono::system_clock::time_point poi
 inline std::array<IoVector, 2> Chrono::format(std::chrono::system_clock::time_point point) {
     using namespace std::chrono;
     using namespace std::chrono_literals;
+    using Digits100  = meta::LeadingZeroNumericArray<100, 2>;
+    using Digits1000 = meta::LeadingZeroNumericArray<1000, 3>;
+    using Digits2050 = meta::LeadingZeroNumericArray<2050, 4>;
+    constexpr static Digits100::type  &digits100  = Digits100::buf;
+    constexpr static Digits1000::type &digits1000 = Digits1000::buf;
+    constexpr static Digits2050::type &digits2050 = Digits2050::buf;
     static thread_local char dateRecord[] = "1970-01-01";
     static thread_local char timeRecord[] = "00:00:00.000";
     static thread_local system_clock::time_point last {};

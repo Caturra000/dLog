@@ -1,6 +1,7 @@
 #ifndef __DLOG__MSTR_H__
 #define __DLOG__MSTR_H__
 #include <bits/stdc++.h>
+#include "mseq.h"
 namespace dlog {
 namespace meta {
 
@@ -158,15 +159,28 @@ struct LeadingZeroNumericArrayBuilderImpl<std::index_sequence<Is...>, P> {
     using type = typename LeadingZeroNumericArrayBuilderImplSequence<P, Is...>::type;
 };
 
-// TODO -ftemplate-depth overflow
+// solve ftemplate-depth limit
+template <size_t Begin, size_t End, size_t P, bool Flag>
+struct LeadingZeroNumericArrayBuilderRange {
+    using type = typename LeadingZeroNumericArrayBuilderImpl<typename MakeSequence<Begin, End>::type, P>::type;
+};
+
+template <size_t Begin, size_t End, size_t P>
+struct LeadingZeroNumericArrayBuilderRange<Begin, End, P, false> {
+    using type = typename Concat<
+        typename LeadingZeroNumericArrayBuilderRange<Begin, Begin+500, P, true>::type,
+        typename LeadingZeroNumericArrayBuilderRange<Begin+500, End, P, (End-Begin<=1000)>::type
+    >::type;
+};
+
 template <size_t N, size_t P>
 struct LeadingZeroNumericArrayBuilder {
     using check = std::enable_if_t<N && P >= length(N-1)>;
     // type -> MetaString
-    using type = typename LeadingZeroNumericArrayBuilderImpl<std::make_index_sequence<N>, P>::type;
+    using type = typename LeadingZeroNumericArrayBuilderRange<0, N, P, (N<=500)>::type;
 };
 
-// example: LeadingZeroNumericArray<12, 3>::buf = { "001", "002", "003", ... "010", "011" } (const char[12][4])
+// example: LeadingZeroNumericArray<12, 3>::buf = { "000", "001", "002", ... "010", "011" } (const char[12][4])
 template <size_t N, size_t P>
 using LeadingZeroNumericArray = MetaStringArray<typename LeadingZeroNumericArrayBuilder<N, P>::type ,P+1>;
 
