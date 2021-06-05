@@ -184,6 +184,7 @@ struct msg_align: public config {
 };
 
 // need -Wno-literal-suffix
+#pragma GCC diagnostic ignored "-Wliteral-suffix"
 inline constexpr unsigned long long operator""B(unsigned long long x) { return x; }
 inline constexpr unsigned long long operator""KB(unsigned long long x) { return 1024B * x; }
 inline constexpr unsigned long long operator""MB(unsigned long long x) { return 1024KB * x; }
