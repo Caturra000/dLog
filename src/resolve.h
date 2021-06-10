@@ -32,12 +32,9 @@ struct ResolveContext {
 };
 
 template <typename StreamImpl>
-struct ResolverBase {
+struct NonPutResolverBase {
     template <typename T> static void resolve(ResolveContext &ctx, T &&msg);
     template <typename T, typename ...Ts> static void resolve(ResolveContext &ctx, T&&msg, Ts &&...others);
-
-    static size_t estimate(ResolveContext &ctx) { return ctx.total + ctx.count; }
-    static size_t put(ResolveContext &ctx, char *buf);
 
 private:
     template <typename T> static void resolveDispatch(ResolveContext &ctx, T &&msg);
@@ -51,10 +48,28 @@ private:
 
 /// extend
 
+// default put policy
+struct WhitespacePolicy {
+    static size_t estimate(ResolveContext &ctx) { return ctx.total + ctx.count; }
+    static size_t put(ResolveContext &ctx, char *buf);
+};
+
+template <typename StreamImpl>
+struct ResolverBase: public NonPutResolverBase<StreamImpl>, public WhitespacePolicy {};
+
 template <typename StreamImpl, typename ...Policies>
-struct ResolverExtend: public ResolverBase<StreamImpl> {
+struct ResolverExtend;
+
+template <typename StreamImpl>
+struct ResolverExtend<StreamImpl>: public ResolverBase<StreamImpl> {};
+
+template <typename StreamImpl>
+struct ResolverExtend<StreamImpl, WhitespacePolicy>: public ResolverBase<StreamImpl> {};
+
+template <typename StreamImpl, typename ...Policies>
+struct ResolverExtend: public NonPutResolverBase<StreamImpl> {
     using Policy = meta::Mixin<Policies...>;
-    using Base = ResolverBase<StreamImpl>;
+    using Base = NonPutResolverBase<StreamImpl>;
 
     template <typename P = Policy>
     static auto estimate(ResolveContext &ctx)
@@ -77,34 +92,20 @@ struct ResolverExtend: public ResolverBase<StreamImpl> {
 
 template <typename StreamImpl>
 template <typename T>
-inline void ResolverBase<StreamImpl>::resolve(ResolveContext &ctx, T &&msg) {
+inline void NonPutResolverBase<StreamImpl>::resolve(ResolveContext &ctx, T &&msg) {
     resolveDispatch(ctx, std::forward<T>(msg));
 }
 
 template <typename StreamImpl>
 template <typename T, typename ...Ts>
-inline void ResolverBase<StreamImpl>::resolve(ResolveContext &ctx, T&&msg, Ts &&...others) {
+inline void NonPutResolverBase<StreamImpl>::resolve(ResolveContext &ctx, T&&msg, Ts &&...others) {
     resolveDispatch(ctx, std::forward<T>(msg));
     resolve(ctx, std::forward<Ts>(others)...);
 }
 
 template <typename StreamImpl>
-inline size_t ResolverBase<StreamImpl>::put(ResolveContext &ctx, char *buf) {
-    IoVector *ioves = ctx.ioves;
-    size_t offset = 0;
-    for(size_t i = 0; i < ctx.count; ++i) {
-        std::memcpy(buf + offset, ioves[i].base, ioves[i].len);
-        offset += ioves[i].len;
-        if(i == ctx.count-1) buf[offset] = '\n';
-        else buf[offset] = ' ';
-        ++offset;
-    }
-    return offset;
-}
-
-template <typename StreamImpl>
 template <typename T>
-inline void ResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, T &&msg) {
+inline void NonPutResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, T &&msg) {
     size_t len = StreamImpl::parseLength(std::forward<T>(msg));
     char *buf = ctx.currentLocal();
     StreamImpl::parse(buf, std::forward<T>(msg), len);
@@ -113,14 +114,14 @@ inline void ResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, T &&m
 
 template <typename StreamImpl>
 template <size_t N>
-inline void ResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, const char (&msg)[N]) {
+inline void NonPutResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, const char (&msg)[N]) {
     static_assert(N >= 1, "N must be positive.");
     size_t len = N-1;
     ctx.updateExternal(msg, len);
 }
 
 template <typename StreamImpl>
-inline void ResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, int msg) {
+inline void NonPutResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, int msg) {
     constexpr static size_t limit = 10000;
     using Cache = meta::NumericMetaStringsSequence<limit>;
     if(msg > 0 && msg < limit) {
@@ -131,7 +132,7 @@ inline void ResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, int m
 }
 
 template <typename StreamImpl>
-inline void ResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, size_t msg) {
+inline void NonPutResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, size_t msg) {
     constexpr static size_t limit = 10000;
     using Cache = meta::NumericMetaStringsSequence<limit>;
     if(msg < limit) {
@@ -142,20 +143,33 @@ inline void ResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, size_
 }
 
 template <typename StreamImpl>
-inline void ResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, IoVector iov) {
+inline void NonPutResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, IoVector iov) {
     ctx.updateExternal(iov.base, iov.len);
 }
 
 template <typename StreamImpl>
 template <size_t N>
-inline void ResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, std::array<IoVector, N> &ioves) {
+inline void NonPutResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, std::array<IoVector, N> &ioves) {
     for(auto &iov : ioves) resolveDispatch(ctx, iov);
 }
 
 template <typename StreamImpl>
 template <size_t N>
-inline void ResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, std::array<IoVector, N> &&ioves) {
+inline void NonPutResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, std::array<IoVector, N> &&ioves) {
     resolveDispatch(ctx, ioves);
+}
+
+inline size_t WhitespacePolicy::put(ResolveContext &ctx, char *buf) {
+    IoVector *ioves = ctx.ioves;
+    size_t offset = 0;
+    for(size_t i = 0; i < ctx.count; ++i) {
+        std::memcpy(buf + offset, ioves[i].base, ioves[i].len);
+        offset += ioves[i].len;
+        if(i == ctx.count-1) buf[offset] = '\n';
+        else buf[offset] = ' ';
+        ++offset;
+    }
+    return offset;
 }
 
 } // dlog

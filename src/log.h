@@ -3,6 +3,7 @@
 #include <bits/stdc++.h>
 #include "logbase.h"
 #include "tags.h"
+#include "utils.h"
 namespace dlog {
 
 struct VoidExtend {};
@@ -12,7 +13,7 @@ using Stream = StreamExtend<VoidExtend>;
 
 // used in LogBaseImpl
 // ResolverBase<Stream> or ResolverExtend<Stream, ...>
-using Resolver = ResolverExtend<Stream, VoidExtend>;
+using Resolver = ResolverExtend<Stream>;
 
 // no extend
 using Scheduler = SchedulerBase<Resolver>;
