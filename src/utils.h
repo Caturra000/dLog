@@ -10,6 +10,35 @@ struct NoWhitespacePolicy {
     static size_t put(ResolveContext &ctx, char *buf);
 };
 
+struct ColorfulWhitespacePolicy {
+    static size_t estimate(ResolveContext &ctx);
+    static size_t put(ResolveContext &ctx, char *buf);
+};
+
+template <size_t Omit = 0>
+struct ColorfulNoWhitespacePolicy {
+    static size_t estimate(ResolveContext &ctx);
+    static size_t put(ResolveContext &ctx, char *buf);
+};
+
+// see example below
+struct SpecializationPolicy {
+    template <typename T>
+    struct ExtraStream;
+
+    template <typename T>
+    static auto parse(char *buf, const T &msg, size_t length)
+        -> decltype(ExtraStream<T>::parse(0, msg, 0)) {
+        return ExtraStream<T>::parse(buf, msg, length);
+    }
+
+    template <typename T>
+    static auto parseLength(const T &msg)
+        -> decltype(ExtraStream<T>::parseLength(msg)) {
+        return ExtraStream<T>::parseLength(msg);
+    }
+};
+
 /// impl
 
 template <size_t Omit>
@@ -37,6 +66,103 @@ inline size_t NoWhitespacePolicy<Omit>::put(ResolveContext &ctx, char *buf) {
     }
     return offset;
 }
+
+inline size_t ColorfulWhitespacePolicy::estimate(ResolveContext &ctx) {
+    constexpr static char before[] = "\033[31m";
+    constexpr static char after[] = "\033[0m";
+    return ctx.total + ctx.count*(1+ sizeof(before) + sizeof(after) - 2);
+}
+
+inline size_t ColorfulWhitespacePolicy::put(ResolveContext &ctx, char *buf) {
+    constexpr static char before[][6] = {"\033[31m", "\033[32m", "\033[33m", "\033[34m", "\033[35m", "\033[36m"};
+    constexpr static char after[] = "\033[0m";
+    constexpr static size_t roll = sizeof(before) / sizeof(before[0]);
+    IoVector *ioves = ctx.ioves;
+    size_t offset = 0;
+    for(size_t i = 0; i < ctx.count; ++i) {
+        std::memcpy(buf + offset, before[i % roll], sizeof(before[0]) - 1);
+        offset += sizeof(before[0]) - 1;
+        std::memcpy(buf + offset, ioves[i].base, ioves[i].len);
+        offset += ioves[i].len;
+        std::memcpy(buf + offset, after, sizeof(after) - 1);
+        offset += sizeof(after) - 1;
+        if(i == ctx.count-1) buf[offset] = '\n';
+        else buf[offset] = ' ';
+        ++offset;
+    }
+    return offset;
+}
+
+template <size_t Omit>
+inline size_t ColorfulNoWhitespacePolicy<Omit>::estimate(ResolveContext &ctx) {
+    constexpr static char before[] = "\033[31m";
+    constexpr static char after[] = "\033[0m";
+    return ctx.total + (Omit+1 >= ctx.count ? ctx.count : Omit)*(1+ sizeof(before) + sizeof(after) - 2);
+}
+
+template <size_t Omit>
+inline size_t ColorfulNoWhitespacePolicy<Omit>::put(ResolveContext &ctx, char *buf) {
+    constexpr static char before[][6] = {"\033[31m", "\033[32m", "\033[33m", "\033[34m", "\033[35m", "\033[36m"};
+    constexpr static char after[] = "\033[0m";
+    constexpr static size_t roll = sizeof(before) / sizeof(before[0]);
+    size_t omitted = 0;
+    IoVector *ioves = ctx.ioves;
+    size_t offset = 0;
+    for(size_t i = 0; i < ctx.count; ++i) {
+        std::memcpy(buf + offset, before[i % roll], sizeof(before[0]) - 1);
+        offset += sizeof(before[0]) - 1;
+        std::memcpy(buf + offset, ioves[i].base, ioves[i].len);
+        offset += ioves[i].len;
+        std::memcpy(buf + offset, after, sizeof(after) - 1);
+        offset += sizeof(after) - 1;
+        if(i == ctx.count-1) {
+            buf[offset] = '\n';
+            ++offset;
+        }
+        else if(omitted < Omit) {
+            buf[offset] = ' ';
+            ++offset;
+            ++omitted;
+        }
+    }
+    return offset;
+}
+
+///////// SpecializationPolicy example
+//
+// struct Point {
+//     int x, y, z;
+// };
+//
+// usage:  Log::debug( Point{1, 2, 3} );
+// output: [1,2,3]
+//
+// namespace dlog {
+//     template <>
+//     struct SpecializationPolicy::ExtraStream<Point> {
+//         static void parse(char *buf, const Point &p, size_t length) {
+//             int vs[] = {p.x, p.y, p.z};
+//             size_t cur = 0;
+//             buf[cur++] = '[';
+//             for(size_t i = 0, len; i < 3; ++i) {
+//                 len = StreamBase::parseLength(vs[i]);
+//                 StreamBase::parse(&buf[cur], vs[i], len);
+//                 cur += len;
+//                 if(i != 2) buf[cur++] = ',';
+//                 else buf[cur++] = ']';
+//             }
+//         }
+//
+//         static size_t parseLength(const Point &p) {
+//             int vs[] = {p.x, p.y, p.z};
+//             size_t len = 4;
+//             for(auto v :vs) {
+//                 len += StreamBase::parseLength(v);
+//             }
+//             return len;
+//         }
+//     };
+// }
 
 } // dlog
 #endif

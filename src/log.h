@@ -9,7 +9,7 @@ namespace dlog {
 struct VoidExtend {};
 
 // StreamBase or StreamExtend<...>
-using Stream = StreamExtend<VoidExtend>;
+using Stream = StreamExtend<SpecializationPolicy>;
 
 // used in LogBaseImpl
 // ResolverBase<Stream> or ResolverExtend<Stream, ...>

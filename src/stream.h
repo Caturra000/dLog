@@ -53,6 +53,18 @@ struct StreamExtend: public StreamBase {
         -> decltype(P::parse(std::forward<Args>(args)...)) {
         return P::parse(std::forward<Args>(args)...);
     }
+
+    template <typename ...Args, typename B = StreamBase>
+    static auto parseLength(Args &&...args)
+        -> decltype(B::parseLength(std::forward<Args>(args)...)) {
+        return B::parseLength(std::forward<Args>(args)...);
+    }
+
+    template <typename ...Args, typename P = Policy, typename = P>
+    static auto parseLength(Args &&...args)
+        -> decltype(P::parseLength(std::forward<Args>(args)...)) {
+        return P::parseLength(std::forward<Args>(args)...);
+    }
 };
 
 /// impl
