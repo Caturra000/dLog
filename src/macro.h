@@ -9,23 +9,23 @@
 
 #define DLOG_DEBUG_ALIGN(...) Log::debug(dlog::filename(__FILE__), __LINE__, \
     dlog::meta::Whitespace<(size_t)std::max(ssize_t(1), ssize_t(dlog::staticConfig.msg_align) \
-    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::Stream::parseLength(__LINE__)))>::buf,__VA_ARGS__) // line+2
+    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::StreamBase::parseLength(__LINE__)))>::buf,__VA_ARGS__) // line+2
 
 #define DLOG_INFO_ALIGN(...) Log::info(dlog::filename(__FILE__), __LINE__, \
     dlog::meta::Whitespace<(size_t)std::max(ssize_t(1), ssize_t(dlog::staticConfig.msg_align) \
-    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::Stream::parseLength(__LINE__)))>::buf,__VA_ARGS__)
+    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::StreamBase::parseLength(__LINE__)))>::buf,__VA_ARGS__)
 
 #define DLOG_WARN_ALIGN(...) Log::warn(dlog::filename(__FILE__), __LINE__, \
     dlog::meta::Whitespace<(size_t)std::max(ssize_t(1), ssize_t(dlog::staticConfig.msg_align) \
-    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::Stream::parseLength(__LINE__)))>::buf,__VA_ARGS__)
+    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::StreamBase::parseLength(__LINE__)))>::buf,__VA_ARGS__)
 
 #define DLOG_ERROR_ALIGN(...) Log::error(dlog::filename(__FILE__), __LINE__, \
     dlog::meta::Whitespace<(size_t)std::max(ssize_t(1), ssize_t(dlog::staticConfig.msg_align) \
-    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::Stream::parseLength(__LINE__)))>::buf,__VA_ARGS__)
+    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::StreamBase::parseLength(__LINE__)))>::buf,__VA_ARGS__)
 
 #define DLOG_WTF_ALIGN(...) Log::wtf(dlog::filename(__FILE__), __LINE__, \
     dlog::meta::Whitespace<(size_t)std::max(ssize_t(1), ssize_t(dlog::staticConfig.msg_align) \
-    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::Stream::parseLength(__LINE__)))>::buf,__VA_ARGS__)
+    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::StreamBase::parseLength(__LINE__)))>::buf,__VA_ARGS__)
 
 namespace dlog {}
 #endif

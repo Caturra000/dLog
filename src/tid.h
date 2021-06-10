@@ -21,8 +21,8 @@ public:
     pid_t getTid() const { return tid; }
 
 private:
-    Tid(): tid(::gettid()), len(Stream::parseLength(tid)) {
-        Stream::parse(buf, tid, len);
+    Tid(): tid(::gettid()), len(StreamBase::parseLength(tid)) {
+        StreamBase::parse(buf, tid, len);
     }
 
     pid_t tid;

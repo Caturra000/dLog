@@ -1,6 +1,7 @@
 #ifndef __DLOG_STREAM_H__
 #define __DLOG_STREAM_H__
 #include <bits/stdc++.h>
+#include "mixin.h"
 namespace dlog {
 
 template <size_t N = 1024> struct StreamTraitsBase { static constexpr size_t size = N; };
@@ -14,10 +15,7 @@ template <> struct StreamTraits<char*>: public StreamTraitsBase<> {};
 template <> struct StreamTraits<std::string>: public StreamTraitsBase<> {};
 template <size_t N> struct StreamTraits<const char[N]>: public StreamTraitsBase<N> {};
 
-template <typename T>
-struct ExtraStream;
-
-struct Stream {
+struct StreamBase {
     template <typename T>
     using VoidIfInt = std::enable_if_t<std::is_integral<T>::value>;
     template <typename T>
@@ -36,25 +34,32 @@ struct Stream {
     static size_t parseLength(double val);
     static constexpr size_t parseLength(char ch) { return 1; }
     static size_t parseLength(const std::string &str) { return str.length(); }
+};
 
-    template <typename T>
-    static auto parse(char *buf, T &&whatever, size_t length)
-        -> decltype(ExtraStream<T>::parse(0, std::forward<T>(whatever), 0)) {
-        ExtraStream<T>::parse(buf, std::forward<T>(whatever), length);
+/// ext
+
+template <typename ...Policies>
+struct StreamExtend: public StreamBase {
+    using Policy = meta::Mixin<Policies...>;
+
+    template <typename ...Args, typename B = StreamBase> // "B = StreamBase" makes SFINAE possible
+    static auto parse(Args &&...args)
+        -> decltype(B::parse(std::forward<Args>(args)...)) { // dont use decltype(auto), cannot SFINAE
+        return B::parse(std::forward<Args>(args)...);
     }
 
-    template <typename T>
-    static auto parseLength(T &&whatever)
-        -> decltype(ExtraStream<T>::parseLength(std::forward<T>(whatever))) {
-        return ExtraStream<T>::parseLength(std::forward<T>(whatever));
+    template <typename ...Args, typename P = Policy, typename = P> // lower priority
+    static auto parse(Args &&...args)
+        -> decltype(P::parse(std::forward<Args>(args)...)) {
+        return P::parse(std::forward<Args>(args)...);
     }
 };
 
 /// impl
 
 template <typename T>
-inline Stream::VoidIfInt<T>
-Stream::parse(char *buf, T msg, size_t length) {
+inline StreamBase::VoidIfInt<T>
+StreamBase::parse(char *buf, T msg, size_t length) {
     int cur = length-1;
     if(msg < 0) {
         buf[0] = '-';
@@ -71,15 +76,15 @@ Stream::parse(char *buf, T msg, size_t length) {
 }
 
 template <size_t N>
-inline void Stream::parse(char *buf, const char (&msg)[N], size_t length) {
+inline void StreamBase::parse(char *buf, const char (&msg)[N], size_t length) {
     parse(buf, (char*)msg, length);
 }
 
-inline void Stream::parse(char *buf, const char *msg, size_t length) {
+inline void StreamBase::parse(char *buf, const char *msg, size_t length) {
     std::memcpy(buf, msg, length);
 }
 
-inline void Stream::parse(char *buf, double msg, size_t length) {
+inline void StreamBase::parse(char *buf, double msg, size_t length) {
     if(msg > 0) {
         long ival = msg;
         size_t ilen = parseLength(ival);
@@ -103,18 +108,18 @@ inline void Stream::parse(char *buf, double msg, size_t length) {
     }
 }
 
-inline void Stream::parse(char *buf, char msg, size_t) {
+inline void StreamBase::parse(char *buf, char msg, size_t) {
     buf[0] = msg;
 }
 
-inline void Stream::parse(char *buf, const std::string &str, size_t length) {
+inline void StreamBase::parse(char *buf, const std::string &str, size_t length) {
     parse(buf, str.c_str(), length);
 }
 
 
 template <typename T>
-inline constexpr Stream::SizeTypeIfInt<T>
-Stream::parseLength(T val) {
+inline constexpr StreamBase::SizeTypeIfInt<T>
+StreamBase::parseLength(T val) {
     if(val >= 0) {
         if(val == 0)
             return 1;
@@ -143,7 +148,7 @@ Stream::parseLength(T val) {
     return 1 + parseLength(-val);
 }
 
-inline size_t Stream::parseLength(double val) {
+inline size_t StreamBase::parseLength(double val) {
     if(val > 0) {
         long ival = val;
         size_t len = parseLength(ival) + 1; // '.'

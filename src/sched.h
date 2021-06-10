@@ -50,11 +50,12 @@ private:
 }; // wthread;
 
 // interact with wthread
-struct Scheduler {
+template <typename ResolverImpl>
+struct SchedulerBase {
     static void apply(ResolveContext &args) {
         auto &s = Shared::singleton();
         std::lock_guard<std::mutex> lk{s.rmtx};
-        if(s.rcur + Resolver::calspace(args) >= sizeof(s.buf[0])) {
+        if(s.rcur + ResolverImpl::calspace(args) >= sizeof(s.buf[0])) {
             {
                 std::unique_lock<std::mutex> _{s.smtx};
                 s.sflag = false;
@@ -62,8 +63,8 @@ struct Scheduler {
             while(!s.sflag) s.cond.notify_one();
         }
         auto rbuf = s.buf[s.ridx];
-        Resolver::put(args, rbuf + s.rcur);
-        s.rcur += Resolver::calspace(args);
+        ResolverImpl::put(args, rbuf + s.rcur);
+        s.rcur += ResolverImpl::calspace(args);
     }
 };
 
