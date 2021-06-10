@@ -1,28 +1,29 @@
-#ifndef __DLOG_UTILS_H__
-#define __DLOG_UTILS_H__
+#ifndef __DLOG_POLICIES_H__
+#define __DLOG_POLICIES_H__
 #include <bits/stdc++.h>
 #include "resolve.h"
 namespace dlog {
+namespace policy {
 
 template <size_t Omit = 0>
-struct NoWhitespacePolicy {
+struct NoWhitespace {
     static size_t estimate(ResolveContext &ctx);
     static size_t put(ResolveContext &ctx, char *buf);
 };
 
-struct ColorfulWhitespacePolicy {
+struct ColorfulWhitespace {
     static size_t estimate(ResolveContext &ctx);
     static size_t put(ResolveContext &ctx, char *buf);
 };
 
 template <size_t Omit = 0>
-struct ColorfulNoWhitespacePolicy {
+struct ColorfulNoWhitespace {
     static size_t estimate(ResolveContext &ctx);
     static size_t put(ResolveContext &ctx, char *buf);
 };
 
 // see example below
-struct SpecializationPolicy {
+struct Specialization {
     template <typename T>
     struct ExtraStream;
 
@@ -42,12 +43,12 @@ struct SpecializationPolicy {
 /// impl
 
 template <size_t Omit>
-inline size_t NoWhitespacePolicy<Omit>::estimate(ResolveContext &ctx) {
+inline size_t NoWhitespace<Omit>::estimate(ResolveContext &ctx) {
     return ctx.total + (Omit+1 >= ctx.count ? ctx.count : Omit);
 }
 
 template <size_t Omit>
-inline size_t NoWhitespacePolicy<Omit>::put(ResolveContext &ctx, char *buf) {
+inline size_t NoWhitespace<Omit>::put(ResolveContext &ctx, char *buf) {
     size_t omitted = 0;
     IoVector *ioves = ctx.ioves;
     size_t offset = 0;
@@ -67,13 +68,13 @@ inline size_t NoWhitespacePolicy<Omit>::put(ResolveContext &ctx, char *buf) {
     return offset;
 }
 
-inline size_t ColorfulWhitespacePolicy::estimate(ResolveContext &ctx) {
+inline size_t ColorfulWhitespace::estimate(ResolveContext &ctx) {
     constexpr static char before[] = "\033[31m";
     constexpr static char after[] = "\033[0m";
     return ctx.total + ctx.count*(1+ sizeof(before) + sizeof(after) - 2);
 }
 
-inline size_t ColorfulWhitespacePolicy::put(ResolveContext &ctx, char *buf) {
+inline size_t ColorfulWhitespace::put(ResolveContext &ctx, char *buf) {
     constexpr static char before[][6] = {"\033[31m", "\033[32m", "\033[33m", "\033[34m", "\033[35m", "\033[36m"};
     constexpr static char after[] = "\033[0m";
     constexpr static size_t roll = sizeof(before) / sizeof(before[0]);
@@ -94,14 +95,14 @@ inline size_t ColorfulWhitespacePolicy::put(ResolveContext &ctx, char *buf) {
 }
 
 template <size_t Omit>
-inline size_t ColorfulNoWhitespacePolicy<Omit>::estimate(ResolveContext &ctx) {
+inline size_t ColorfulNoWhitespace<Omit>::estimate(ResolveContext &ctx) {
     constexpr static char before[] = "\033[31m";
     constexpr static char after[] = "\033[0m";
     return ctx.total + (Omit+1 >= ctx.count ? ctx.count : Omit)*(1+ sizeof(before) + sizeof(after) - 2);
 }
 
 template <size_t Omit>
-inline size_t ColorfulNoWhitespacePolicy<Omit>::put(ResolveContext &ctx, char *buf) {
+inline size_t ColorfulNoWhitespace<Omit>::put(ResolveContext &ctx, char *buf) {
     constexpr static char before[][6] = {"\033[31m", "\033[32m", "\033[33m", "\033[34m", "\033[35m", "\033[36m"};
     constexpr static char after[] = "\033[0m";
     constexpr static size_t roll = sizeof(before) / sizeof(before[0]);
@@ -128,7 +129,7 @@ inline size_t ColorfulNoWhitespacePolicy<Omit>::put(ResolveContext &ctx, char *b
     return offset;
 }
 
-///////// SpecializationPolicy example
+///////// Specialization example
 //
 // struct Point {
 //     int x, y, z;
@@ -139,7 +140,7 @@ inline size_t ColorfulNoWhitespacePolicy<Omit>::put(ResolveContext &ctx, char *b
 //
 // namespace dlog {
 //     template <>
-//     struct SpecializationPolicy::ExtraStream<Point> {
+//     struct Specialization::ExtraStream<Point> {
 //         static void parse(char *buf, const Point &p, size_t length) {
 //             int vs[] = {p.x, p.y, p.z};
 //             size_t cur = 0;
@@ -164,5 +165,6 @@ inline size_t ColorfulNoWhitespacePolicy<Omit>::put(ResolveContext &ctx, char *b
 //     };
 // }
 
+} // policy
 } // dlog
 #endif

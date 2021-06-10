@@ -48,14 +48,18 @@ private:
 
 /// extend
 
+namespace policy {
+
 // default put policy
-struct WhitespacePolicy {
+struct Whitespace {
     static size_t estimate(ResolveContext &ctx) { return ctx.total + ctx.count; }
     static size_t put(ResolveContext &ctx, char *buf);
 };
 
+} // policy
+
 template <typename StreamImpl>
-struct ResolverBase: public NonPutResolverBase<StreamImpl>, public WhitespacePolicy {};
+struct ResolverBase: public NonPutResolverBase<StreamImpl>, public policy::Whitespace {};
 
 template <typename StreamImpl, typename ...Policies>
 struct ResolverExtend;
@@ -64,7 +68,7 @@ template <typename StreamImpl>
 struct ResolverExtend<StreamImpl>: public ResolverBase<StreamImpl> {};
 
 template <typename StreamImpl>
-struct ResolverExtend<StreamImpl, WhitespacePolicy>: public ResolverBase<StreamImpl> {};
+struct ResolverExtend<StreamImpl, policy::Whitespace>: public ResolverBase<StreamImpl> {};
 
 template <typename StreamImpl, typename ...Policies>
 struct ResolverExtend: public NonPutResolverBase<StreamImpl> {
@@ -159,7 +163,9 @@ inline void NonPutResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx,
     resolveDispatch(ctx, ioves);
 }
 
-inline size_t WhitespacePolicy::put(ResolveContext &ctx, char *buf) {
+namespace policy {
+
+inline size_t Whitespace::put(ResolveContext &ctx, char *buf) {
     IoVector *ioves = ctx.ioves;
     size_t offset = 0;
     for(size_t i = 0; i < ctx.count; ++i) {
@@ -171,6 +177,8 @@ inline size_t WhitespacePolicy::put(ResolveContext &ctx, char *buf) {
     }
     return offset;
 }
+
+} // policy
 
 } // dlog
 #endif

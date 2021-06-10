@@ -3,13 +3,13 @@
 #include <bits/stdc++.h>
 #include "logbase.h"
 #include "tags.h"
-#include "utils.h"
+#include "policies.h"
 namespace dlog {
 
 struct VoidExtend {};
 
 // StreamBase or StreamExtend<...>
-using Stream = StreamExtend<SpecializationPolicy>;
+using Stream = StreamExtend<policy::Specialization>;
 
 // used in LogBaseImpl
 // ResolverBase<Stream> or ResolverExtend<Stream, ...>
