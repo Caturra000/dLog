@@ -55,7 +55,7 @@ struct SchedulerBase {
     static void apply(ResolveContext &args) {
         auto &s = Shared::singleton();
         std::lock_guard<std::mutex> lk{s.rmtx};
-        if(s.rcur + ResolverImpl::calspace(args) >= sizeof(s.buf[0])) {
+        if(s.rcur + ResolverImpl::estimate(args) >= sizeof(s.buf[0])) {
             {
                 std::unique_lock<std::mutex> _{s.smtx};
                 s.sflag = false;
@@ -63,8 +63,7 @@ struct SchedulerBase {
             while(!s.sflag) s.cond.notify_one();
         }
         auto rbuf = s.buf[s.ridx];
-        ResolverImpl::put(args, rbuf + s.rcur);
-        s.rcur += ResolverImpl::calspace(args);
+        s.rcur += ResolverImpl::put(args, rbuf + s.rcur);
     }
 };
 

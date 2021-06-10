@@ -36,8 +36,8 @@ struct ResolverBase {
     template <typename T> static void resolve(ResolveContext &ctx, T &&msg);
     template <typename T, typename ...Ts> static void resolve(ResolveContext &ctx, T&&msg, Ts &&...others);
 
-    static size_t calspace(ResolveContext &ctx) { return ctx.total + ctx.count; }
-    static void put(ResolveContext &ctx, char *buf);
+    static size_t estimate(ResolveContext &ctx) { return ctx.total + ctx.count; }
+    static size_t put(ResolveContext &ctx, char *buf);
 
 private:
     template <typename T> static void resolveDispatch(ResolveContext &ctx, T &&msg);
@@ -57,12 +57,12 @@ struct ResolverExtend: public ResolverBase<StreamImpl> {
     using Base = ResolverBase<StreamImpl>;
 
     template <typename P = Policy>
-    static auto calspace(ResolveContext &ctx)
-        -> decltype(P::calspace(ctx)) { return P::calspace(ctx); }
+    static auto estimate(ResolveContext &ctx)
+        -> decltype(P::estimate(ctx)) { return P::estimate(ctx); }
 
     template <typename B = Base, typename = B>
-    static auto calspace(ResolveContext &ctx)
-        -> decltype(B::calspace(ctx)) { return B::calspace(ctx); }
+    static auto estimate(ResolveContext &ctx)
+        -> decltype(B::estimate(ctx)) { return B::estimate(ctx); }
 
     template <typename P = Policy>
     static auto put(ResolveContext &ctx, char *buf)
@@ -89,7 +89,7 @@ inline void ResolverBase<StreamImpl>::resolve(ResolveContext &ctx, T&&msg, Ts &&
 }
 
 template <typename StreamImpl>
-inline void ResolverBase<StreamImpl>::put(ResolveContext &ctx, char *buf) {
+inline size_t ResolverBase<StreamImpl>::put(ResolveContext &ctx, char *buf) {
     IoVector *ioves = ctx.ioves;
     size_t offset = 0;
     for(size_t i = 0; i < ctx.count; ++i) {
@@ -99,6 +99,7 @@ inline void ResolverBase<StreamImpl>::put(ResolveContext &ctx, char *buf) {
         else buf[offset] = ' ';
         ++offset;
     }
+    return offset;
 }
 
 template <typename StreamImpl>
