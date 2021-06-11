@@ -2,6 +2,7 @@
 #define __DLOG_POLICIES_H__
 #include <bits/stdc++.h>
 #include "resolve.h"
+#include "simhash.h" // TODO chatty policy
 namespace dlog {
 namespace policy {
 
