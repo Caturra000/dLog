@@ -17,7 +17,7 @@ struct NoWhitespace: public PutInterface<NoWhitespace<Omit>> {
 // ColorfulDecorator is just a decorator
 // use Colorful as policy
 template <typename Decorated> // Decorated put-policy
-struct ColorfulDecorator: protected Decorated {
+struct ColorfulDecorator/*: protected Decorated*/ {
     static size_t estimateImpl(ResolveContext &ctx);
     static size_t putIov(char *buf, IoVector &iov, size_t nth);
     static size_t putGap(char *buf, size_t nth);
@@ -26,6 +26,17 @@ struct ColorfulDecorator: protected Decorated {
 
 template <typename Decorated>
 struct Colorful: public PutInterface< ColorfulDecorator<Decorated> > {};
+
+template <typename Decorated, size_t N>
+struct LessDecorator {
+    static size_t estimateImpl(ResolveContext &ctx) { return Decorated::estimateImpl(ctx); }
+    static size_t putIov(char *buf, IoVector &iov, size_t nth) { return nth >= N ? 0 : Decorated::putIov(buf, iov, nth); }
+    static size_t putGap(char *buf, size_t nth) { return nth+1 >= N ? 0: Decorated::putGap(buf, nth); }
+    static size_t putLine(char *buf) { return Decorated::putLine(buf); }
+};
+
+template <typename Decorated, size_t N>
+struct Less: public PutInterface < LessDecorator<Decorated, N> > {};
 
 // see example below
 struct Specialization {
