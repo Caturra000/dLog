@@ -50,10 +50,19 @@ private:
 
 namespace policy {
 
-// default put policy
-struct Whitespace {
-    static size_t estimate(ResolveContext &ctx) { return ctx.total + ctx.count; }
+// CRTP interface
+template <typename Derived>
+struct PutInterface {
+    static size_t estimate(ResolveContext &ctx);
     static size_t put(ResolveContext &ctx, char *buf);
+};
+
+// default put policy
+struct Whitespace: public PutInterface<Whitespace> {
+    static size_t estimateImpl(ResolveContext &ctx) { return ctx.total + ctx.count; }
+    static size_t putIov(char *buf, IoVector &iov, size_t nth);
+    static size_t putGap(char *buf, size_t nth);
+    static size_t putLine(char *buf);
 };
 
 } // policy
@@ -165,17 +174,39 @@ inline void NonPutResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx,
 
 namespace policy {
 
-inline size_t Whitespace::put(ResolveContext &ctx, char *buf) {
+template <typename Derived>
+inline size_t PutInterface<Derived>::estimate(ResolveContext &ctx) {
+    return Derived::estimateImpl(ctx);
+}
+
+template <typename Derived>
+inline size_t PutInterface<Derived>::put(ResolveContext &ctx, char *buf) {
+    char *base = buf;
     IoVector *ioves = ctx.ioves;
-    size_t offset = 0;
+    size_t offset;
     for(size_t i = 0; i < ctx.count; ++i) {
-        std::memcpy(buf + offset, ioves[i].base, ioves[i].len);
-        offset += ioves[i].len;
-        if(i == ctx.count-1) buf[offset] = '\n';
-        else buf[offset] = ' ';
-        ++offset;
+        offset = Derived::putIov(buf, ioves[i], i);
+        buf += offset;
+        offset = (i+1!=ctx.count ? Derived::putGap(buf, i) : Derived::putLine(buf));
+        buf += offset;
     }
-    return offset;
+    return buf - base;
+}
+
+inline size_t Whitespace::putIov(char *buf, IoVector &iov, size_t nth) {
+    (void)nth;
+    std::memcpy(buf, iov.base, iov.len);
+    return iov.len;
+}
+inline size_t Whitespace::putGap(char *buf, size_t nth) {
+    (void)nth;
+    *buf = ' ';
+    return 1;
+}
+
+inline size_t Whitespace::putLine(char *buf) {
+    *buf = '\n';
+    return 1;
 }
 
 } // policy
