@@ -13,7 +13,7 @@ using Stream = StreamExtend<policy::Specialization>;
 
 // used in LogBaseImpl
 // ResolverBase<Stream> or ResolverExtend<Stream, ...>
-using Resolver = ResolverExtend<Stream>;
+using Resolver = ResolverExtend<Stream, policy::Whitespace>;
 
 // no extend
 using Scheduler = SchedulerBase<Resolver>;

@@ -98,7 +98,7 @@ template <size_t Omit>
 inline size_t ColorfulNoWhitespace<Omit>::estimate(ResolveContext &ctx) {
     constexpr static char before[] = "\033[31m";
     constexpr static char after[] = "\033[0m";
-    return ctx.total + (Omit+1 >= ctx.count ? ctx.count : Omit)*(1+ sizeof(before) + sizeof(after) - 2);
+    return ctx.total + (Omit+1 >= ctx.count ? ctx.count : Omit) + ctx.count * (sizeof(before) + sizeof(after) - 2);
 }
 
 template <size_t Omit>
