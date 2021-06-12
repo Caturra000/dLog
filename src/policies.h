@@ -2,7 +2,7 @@
 #define __DLOG_POLICIES_H__
 #include <bits/stdc++.h>
 #include "resolve.h"
-#include "simhash.h" // TODO chatty policy
+#include "simhash.h"
 namespace dlog {
 namespace policy {
 
@@ -37,6 +37,26 @@ struct LessDecorator {
 
 template <typename Decorated, size_t N>
 struct Less: public PutInterface < LessDecorator<Decorated, N> > {};
+
+// stateful policy
+// ignore similar or duplicate log message (per thread)
+template <typename Decorated>
+struct ChattyDecorator {
+    static size_t estimateImpl(ResolveContext &ctx);
+    static size_t putIov(char *buf, IoVector &iov, size_t nth);
+    static size_t putGap(char *buf, size_t nth);
+    static size_t putLine(char *buf);
+
+protected:
+    constexpr static size_t CHATTY_LINE_MAX = 1e5;
+    static thread_local char capture[CHATTY_LINE_MAX];
+    static thread_local size_t current;
+    static thread_local size_t ignored; // for debug
+    static thread_local int fingerprint;
+};
+
+template <typename Decorated>
+struct Chatty: public PutInterface< ChattyDecorator<Decorated> > {};
 
 // see example below
 struct Specialization {
@@ -114,6 +134,53 @@ template <typename Decorated>
 inline size_t ColorfulDecorator<Decorated>::putLine(char *buf) {
     return Decorated::putLine(buf);
 }
+
+template <typename Decorated>
+inline size_t ChattyDecorator<Decorated>::estimateImpl(ResolveContext &ctx) {
+    return Decorated::estimateImpl(ctx);
+}
+
+template <typename Decorated>
+inline size_t ChattyDecorator<Decorated>::putIov(char *buf, IoVector &iov, size_t nth) {
+    (void)buf;
+    size_t len = Decorated::putIov(capture + current, iov, nth);
+    current += len;
+    return 0;
+}
+
+template <typename Decorated>
+inline size_t ChattyDecorator<Decorated>::putGap(char *buf, size_t nth) {
+    (void)buf;
+    size_t len = Decorated::putGap(capture + current, nth);
+    current += len;
+    return 0;
+}
+
+template <typename Decorated>
+inline size_t ChattyDecorator<Decorated>::putLine(char *buf) {
+    auto &simhash = Simhash::instance();
+
+    int nextFingerprint = simhash.getFingerprint(capture, current);
+    int currentFingerprint = fingerprint;
+    fingerprint = nextFingerprint;
+
+    int temp = current;
+    current = 0;
+
+    if(!simhash(currentFingerprint, nextFingerprint)) {
+        ignored = 0;
+        std::memcpy(buf, capture, temp);
+        return temp + Decorated::putLine(buf + temp);
+    } else { // chatty
+        ignored++;
+        return 0;
+    }
+}
+
+template <typename Decorated> thread_local char   ChattyDecorator<Decorated>::capture[];
+template <typename Decorated> thread_local size_t ChattyDecorator<Decorated>::current{};
+template <typename Decorated> thread_local size_t ChattyDecorator<Decorated>::ignored{};
+template <typename Decorated> thread_local int ChattyDecorator<Decorated>::fingerprint{};
 
 ///////// Specialization example
 //

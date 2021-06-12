@@ -16,6 +16,10 @@ public:
     bool operator()(const std::string &s1, const std::string &s2, int n = 3);
     bool operator()(const char *s1, size_t len1,
                     const char *s2, size_t len2, int n = 3);
+    bool operator()(int f1, int f2, int n = 3); // fingerprint
+
+    int getFingerprint(const char *str, size_t len);
+    int getFingerprint(const std::string &str);
 
     Simhash(const Simhash &) = delete;
     Simhash& operator=(const Simhash &) = delete;
@@ -28,8 +32,6 @@ private:
     void initBitmask();
     void initTransfer();
     int bitcount(unsigned int bit);
-    int getFingerprint(const char *str, size_t len);
-    int getFingerprint(const std::string &str);
 
     Simhash();
 };
@@ -41,6 +43,29 @@ inline bool Simhash::operator()(const std::string &s1, const std::string &s2, in
 inline bool Simhash::operator()(const char *s1, size_t len1,
                 const char *s2, size_t len2, int n) {
     return bitcount(getFingerprint(s1, len1) ^ getFingerprint(s2, len2)) < n;
+}
+
+inline bool Simhash::operator()(int f1, int f2, int n) {
+    return bitcount(f1 ^ f2) < n;
+}
+
+inline int Simhash::getFingerprint(const char *str, size_t len) {
+    int fingerprint = 0;
+    for(int i = 0; i < 32; ++i) {
+        int iCount = 0;
+        for(int j = 0; j < len; ++j) {
+            int feature = str[j];
+            int iWeight = _transfer[feature] >> i;
+            if(iWeight &1) ++iCount;
+            else --iCount;
+        }
+        if(iCount >= 0) fingerprint |= 1<<i;
+    }
+    return fingerprint;
+}
+
+inline int Simhash::getFingerprint(const std::string &str) {
+    return getFingerprint(str.c_str(), str.length());
 }
 
 inline void Simhash::initBitmask() {
@@ -62,25 +87,6 @@ inline void Simhash::initTransfer() {
 
 inline int Simhash::bitcount(unsigned int bit) {
     return bit ? _bitmask[bit & 0xff] + bitcount(bit>>8) : 0;
-}
-
-inline int Simhash::getFingerprint(const char *str, size_t len) {
-    int fingerprint = 0;
-    for(int i = 0; i < 32; ++i) {
-        int iCount = 0;
-        for(int j = 0; j < len; ++j) {
-            int feature = str[j];
-            int iWeight = _transfer[feature] >> i;
-            if(iWeight &1) ++iCount;
-            else --iCount;
-        }
-        if(iCount >= 0) fingerprint |= 1<<i;
-    }
-    return fingerprint;
-}
-
-inline int Simhash::getFingerprint(const std::string &str) {
-    return getFingerprint(str.c_str(), str.length());
 }
 
 inline Simhash::Simhash()
