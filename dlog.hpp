@@ -1,6 +1,6 @@
 // portable single header version
 // autogen by: https://github.com/Viatorus/quom
-// dlog version: 45925975e69957b453ef5a5a203129a36745885b
+// dlog version: fc720d18a0491ef66f309cd6f2d8b6ca31037884
 
 #ifndef __DLOG_HPP__
 #define __DLOG_HPP__
@@ -121,7 +121,7 @@ struct MinValue<T> {
 template <typename T, typename ...Ts>
 struct MinType {
     using type = std::conditional_t<
-        /*if  */Elem<T>::value <= MinValue<Ts...>::value, 
+        /*if  */Elem<T>::value <= MinValue<Ts...>::value,
         /*then*/T,
         /*else*/typename MinType<Ts...>::type>;
 };
@@ -242,6 +242,9 @@ struct Sort2<MaxIdx, MaxIdx, T, Ts...> {
 } // meta
 } // dlog
 #endif
+#ifndef __DLOG__MSTR_H__
+#define __DLOG__MSTR_H__
+#include <bits/stdc++.h>
 #ifndef __DLOG_MSEQ_H__
 #define __DLOG_MSEQ_H__
 #include <bits/stdc++.h>
@@ -265,10 +268,6 @@ struct MakeSequence {
 } // meta
 } // dlog
 #endif
-#ifndef __DLOG__MSTR_H__
-#define __DLOG__MSTR_H__
-#include <bits/stdc++.h>
-
 namespace dlog {
 namespace meta {
 
@@ -435,7 +434,7 @@ template <size_t Begin, size_t End, size_t P>
 struct LeadingZeroNumericArrayBuilderRange<Begin, End, P, false> {
     using type = typename Concat<
         typename LeadingZeroNumericArrayBuilderRange<Begin, Begin+500, P, true>::type,
-        typename LeadingZeroNumericArrayBuilderRange<Begin+500, End, P, (1000 >= (End-Begin))>::type
+        typename LeadingZeroNumericArrayBuilderRange<Begin+500, End, P, (End-Begin<=1000)>::type
     >::type;
 };
 
@@ -443,12 +442,24 @@ template <size_t N, size_t P>
 struct LeadingZeroNumericArrayBuilder {
     using check = std::enable_if_t<N && P >= length(N-1)>;
     // type -> MetaString
-    using type = typename LeadingZeroNumericArrayBuilderRange<0, N, P, 500>=N>::type;
+    using type = typename LeadingZeroNumericArrayBuilderRange<0, N, P, (N<=500)>::type;
 };
 
 // example: LeadingZeroNumericArray<12, 3>::buf = { "000", "001", "002", ... "010", "011" } (const char[12][4])
 template <size_t N, size_t P>
 using LeadingZeroNumericArray = MetaStringArray<typename LeadingZeroNumericArrayBuilder<N, P>::type ,P+1>;
+
+} // meta
+} // dlog
+#endif
+
+#ifndef __DLOG_MIXIN_H__
+#define __DLOG_MIXIN_H__
+namespace dlog {
+namespace meta {
+
+template <typename ...Ts>
+struct Mixin: public Ts... {};
 
 } // meta
 } // dlog
@@ -563,9 +574,9 @@ private:
 inline std::string Chrono::formatDebug(std::chrono::system_clock::time_point point) {
     auto dateTime = getDateTime(point);
     return std::to_string(dateTime.year()) + '-' + std::to_string(dateTime.month()) + '-' + std::to_string(dateTime.day()) + ' '
-            + std::to_string(dateTime.hour()) + ':' + std::to_string(dateTime.minute()) + ':' + std::to_string(dateTime.second()) 
-                + std::to_string(dateTime.hour()) + ':' + std::to_string(dateTime.minute()) + ':' + std::to_string(dateTime.second()) 
-            + std::to_string(dateTime.hour()) + ':' + std::to_string(dateTime.minute()) + ':' + std::to_string(dateTime.second()) 
+            + std::to_string(dateTime.hour()) + ':' + std::to_string(dateTime.minute()) + ':' + std::to_string(dateTime.second())
+                + std::to_string(dateTime.hour()) + ':' + std::to_string(dateTime.minute()) + ':' + std::to_string(dateTime.second())
+            + std::to_string(dateTime.hour()) + ':' + std::to_string(dateTime.minute()) + ':' + std::to_string(dateTime.second())
             + '.' + std::to_string(dateTime.millisecond());
 }
 
@@ -651,6 +662,9 @@ inline Chrono::Time Chrono::calTime(std::chrono::system_clock::duration duration
 #endif
 #ifndef __DLOG_LOG_H__
 #define __DLOG_LOG_H__
+#include <bits/stdc++.h>
+#ifndef __DLOG_LOG_BASE_H__
+#define __DLOG_LOG_BASE_H__
 #include <bits/stdc++.h>
 #ifndef __DLOG_CONFIG_H__
 #define __DLOG_CONFIG_H__
@@ -875,6 +889,7 @@ constexpr const static StaticConfig &staticConfig = conf::globalConfigBoot;
 #ifndef __DLOG_STREAM_H__
 #define __DLOG_STREAM_H__
 #include <bits/stdc++.h>
+
 namespace dlog {
 
 template <size_t N = 1024> struct StreamTraitsBase { static constexpr size_t size = N; };
@@ -888,10 +903,7 @@ template <> struct StreamTraits<char*>: public StreamTraitsBase<> {};
 template <> struct StreamTraits<std::string>: public StreamTraitsBase<> {};
 template <size_t N> struct StreamTraits<const char[N]>: public StreamTraitsBase<N> {};
 
-template <typename T>
-struct ExtraStream;
-
-struct Stream {
+struct StreamBase {
     template <typename T>
     using VoidIfInt = std::enable_if_t<std::is_integral<T>::value>;
     template <typename T>
@@ -910,25 +922,44 @@ struct Stream {
     static size_t parseLength(double val);
     static constexpr size_t parseLength(char ch) { return 1; }
     static size_t parseLength(const std::string &str) { return str.length(); }
+};
 
-    template <typename T>
-    static auto parse(char *buf, T &&whatever, size_t length)
-        -> decltype(ExtraStream<T>::parse(0, std::forward<T>(whatever), 0)) {
-        ExtraStream<T>::parse(buf, std::forward<T>(whatever), length);
+/// ext
+
+template <typename ...Policies>
+struct StreamExtend: public StreamBase {
+    using Policy = meta::Mixin<Policies...>;
+
+    template <typename ...Args, typename B = StreamBase> // "B = StreamBase" makes SFINAE possible
+    static auto parse(Args &&...args)
+        -> decltype(B::parse(std::forward<Args>(args)...)) { // dont use decltype(auto), cannot SFINAE
+        return B::parse(std::forward<Args>(args)...);
     }
 
-    template <typename T>
-    static auto parseLength(T &&whatever)
-        -> decltype(ExtraStream<T>::parseLength(std::forward<T>(whatever))) {
-        return ExtraStream<T>::parseLength(std::forward<T>(whatever));
+    template <typename ...Args, typename P = Policy, typename = P> // lower priority
+    static auto parse(Args &&...args)
+        -> decltype(P::parse(std::forward<Args>(args)...)) {
+        return P::parse(std::forward<Args>(args)...);
+    }
+
+    template <typename ...Args, typename B = StreamBase>
+    static auto parseLength(Args &&...args)
+        -> decltype(B::parseLength(std::forward<Args>(args)...)) {
+        return B::parseLength(std::forward<Args>(args)...);
+    }
+
+    template <typename ...Args, typename P = Policy, typename = P>
+    static auto parseLength(Args &&...args)
+        -> decltype(P::parseLength(std::forward<Args>(args)...)) {
+        return P::parseLength(std::forward<Args>(args)...);
     }
 };
 
 /// impl
 
 template <typename T>
-inline Stream::VoidIfInt<T>
-Stream::parse(char *buf, T msg, size_t length) {
+inline StreamBase::VoidIfInt<T>
+StreamBase::parse(char *buf, T msg, size_t length) {
     int cur = length-1;
     if(msg < 0) {
         buf[0] = '-';
@@ -945,15 +976,15 @@ Stream::parse(char *buf, T msg, size_t length) {
 }
 
 template <size_t N>
-inline void Stream::parse(char *buf, const char (&msg)[N], size_t length) {
+inline void StreamBase::parse(char *buf, const char (&msg)[N], size_t length) {
     parse(buf, (char*)msg, length);
 }
 
-inline void Stream::parse(char *buf, const char *msg, size_t length) {
+inline void StreamBase::parse(char *buf, const char *msg, size_t length) {
     std::memcpy(buf, msg, length);
 }
 
-inline void Stream::parse(char *buf, double msg, size_t length) {
+inline void StreamBase::parse(char *buf, double msg, size_t length) {
     if(msg > 0) {
         long ival = msg;
         size_t ilen = parseLength(ival);
@@ -977,17 +1008,17 @@ inline void Stream::parse(char *buf, double msg, size_t length) {
     }
 }
 
-inline void Stream::parse(char *buf, char msg, size_t) {
+inline void StreamBase::parse(char *buf, char msg, size_t) {
     buf[0] = msg;
 }
 
-inline void Stream::parse(char *buf, const std::string &str, size_t length) {
+inline void StreamBase::parse(char *buf, const std::string &str, size_t length) {
     parse(buf, str.c_str(), length);
 }
 
 template <typename T>
-inline constexpr Stream::SizeTypeIfInt<T>
-Stream::parseLength(T val) {
+inline constexpr StreamBase::SizeTypeIfInt<T>
+StreamBase::parseLength(T val) {
     if(val >= 0) {
         if(val == 0)
             return 1;
@@ -1016,7 +1047,7 @@ Stream::parseLength(T val) {
     return 1 + parseLength(-val);
 }
 
-inline size_t Stream::parseLength(double val) {
+inline size_t StreamBase::parseLength(double val) {
     if(val > 0) {
         long ival = val;
         size_t len = parseLength(ival) + 1; // '.'
@@ -1063,12 +1094,10 @@ struct ResolveContext {
     }
 };
 
-struct Resolver {
+template <typename StreamImpl>
+struct NonPutResolverBase {
     template <typename T> static void resolve(ResolveContext &ctx, T &&msg);
     template <typename T, typename ...Ts> static void resolve(ResolveContext &ctx, T&&msg, Ts &&...others);
-
-    static size_t calspace(ResolveContext &ctx) { return ctx.total + ctx.count; }
-    static void put(ResolveContext &ctx, char *buf);
 
 private:
     template <typename T> static void resolveDispatch(ResolveContext &ctx, T &&msg);
@@ -1080,47 +1109,95 @@ private:
     template <size_t N> static void resolveDispatch(ResolveContext &ctx, std::array<IoVector, N> &&ioves);
 };
 
+/// extend
+
+namespace policy {
+
+// CRTP interface
+template <typename Derived>
+struct PutInterface {
+    static size_t estimate(ResolveContext &ctx);
+    static size_t put(ResolveContext &ctx, char *buf);
+};
+
+// default put policy
+struct Whitespace: public PutInterface<Whitespace> {
+    static size_t estimateImpl(ResolveContext &ctx) { return ctx.total + ctx.count; }
+    static size_t putIov(char *buf, IoVector &iov, size_t nth);
+    static size_t putGap(char *buf, size_t nth);
+    static size_t putLine(char *buf);
+};
+
+} // policy
+
+template <typename StreamImpl>
+struct ResolverBase: public NonPutResolverBase<StreamImpl>, public policy::Whitespace {};
+
+template <typename StreamImpl, typename ...Policies>
+struct ResolverExtend;
+
+template <typename StreamImpl>
+struct ResolverExtend<StreamImpl>: public ResolverBase<StreamImpl> {};
+
+template <typename StreamImpl>
+struct ResolverExtend<StreamImpl, policy::Whitespace>: public ResolverBase<StreamImpl> {};
+
+template <typename StreamImpl, typename ...Policies>
+struct ResolverExtend: public NonPutResolverBase<StreamImpl> {
+    using Policy = meta::Mixin<Policies...>;
+    using Base = NonPutResolverBase<StreamImpl>;
+
+    template <typename P = Policy>
+    static auto estimate(ResolveContext &ctx)
+        -> decltype(P::estimate(ctx)) { return P::estimate(ctx); }
+
+    template <typename B = Base, typename = B>
+    static auto estimate(ResolveContext &ctx)
+        -> decltype(B::estimate(ctx)) { return B::estimate(ctx); }
+
+    template <typename P = Policy>
+    static auto put(ResolveContext &ctx, char *buf)
+        -> decltype(P::put(ctx, buf)) { return P::put(ctx, buf); }
+
+    template <typename B = Base, typename = B>
+    static auto put(ResolveContext &ctx, char *buf)
+        -> decltype(B::put(ctx, buf)) { return B::put(ctx, buf); }
+};
+
 /// impl
 
+template <typename StreamImpl>
 template <typename T>
-inline void Resolver::resolve(ResolveContext &ctx, T &&msg) {
+inline void NonPutResolverBase<StreamImpl>::resolve(ResolveContext &ctx, T &&msg) {
     resolveDispatch(ctx, std::forward<T>(msg));
 }
 
+template <typename StreamImpl>
 template <typename T, typename ...Ts>
-inline void Resolver::resolve(ResolveContext &ctx, T&&msg, Ts &&...others) {
+inline void NonPutResolverBase<StreamImpl>::resolve(ResolveContext &ctx, T&&msg, Ts &&...others) {
     resolveDispatch(ctx, std::forward<T>(msg));
     resolve(ctx, std::forward<Ts>(others)...);
 }
 
-inline void Resolver::put(ResolveContext &ctx, char *buf) {
-    IoVector *ioves = ctx.ioves;
-    size_t offset = 0;
-    for(size_t i = 0; i < ctx.count; ++i) {
-        std::memcpy(buf + offset, ioves[i].base, ioves[i].len);
-        offset += ioves[i].len;
-        if(i == ctx.count-1) buf[offset] = '\n';
-        else buf[offset] = ' ';
-        ++offset;
-    }
-}
-
+template <typename StreamImpl>
 template <typename T>
-inline void Resolver::resolveDispatch(ResolveContext &ctx, T &&msg) {
-    size_t len = Stream::parseLength(std::forward<T>(msg));
+inline void NonPutResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, T &&msg) {
+    size_t len = StreamImpl::parseLength(std::forward<T>(msg));
     char *buf = ctx.currentLocal();
-    Stream::parse(buf, std::forward<T>(msg), len);
+    StreamImpl::parse(buf, std::forward<T>(msg), len);
     ctx.updateLocal(len);
 }
 
+template <typename StreamImpl>
 template <size_t N>
-inline void Resolver::resolveDispatch(ResolveContext &ctx, const char (&msg)[N]) {
+inline void NonPutResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, const char (&msg)[N]) {
     static_assert(N >= 1, "N must be positive.");
     size_t len = N-1;
     ctx.updateExternal(msg, len);
 }
 
-inline void Resolver::resolveDispatch(ResolveContext &ctx, int msg) {
+template <typename StreamImpl>
+inline void NonPutResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, int msg) {
     constexpr static size_t limit = 10000;
     using Cache = meta::NumericMetaStringsSequence<limit>;
     if(msg > 0 && msg < limit) {
@@ -1130,7 +1207,8 @@ inline void Resolver::resolveDispatch(ResolveContext &ctx, int msg) {
     }
 }
 
-inline void Resolver::resolveDispatch(ResolveContext &ctx, size_t msg) {
+template <typename StreamImpl>
+inline void NonPutResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, size_t msg) {
     constexpr static size_t limit = 10000;
     using Cache = meta::NumericMetaStringsSequence<limit>;
     if(msg < limit) {
@@ -1140,19 +1218,61 @@ inline void Resolver::resolveDispatch(ResolveContext &ctx, size_t msg) {
     }
 }
 
-inline void Resolver::resolveDispatch(ResolveContext &ctx, IoVector iov) {
+template <typename StreamImpl>
+inline void NonPutResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, IoVector iov) {
     ctx.updateExternal(iov.base, iov.len);
 }
 
+template <typename StreamImpl>
 template <size_t N>
-inline void Resolver::resolveDispatch(ResolveContext &ctx, std::array<IoVector, N> &ioves) {
+inline void NonPutResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, std::array<IoVector, N> &ioves) {
     for(auto &iov : ioves) resolveDispatch(ctx, iov);
 }
 
+template <typename StreamImpl>
 template <size_t N>
-inline void Resolver::resolveDispatch(ResolveContext &ctx, std::array<IoVector, N> &&ioves) {
+inline void NonPutResolverBase<StreamImpl>::resolveDispatch(ResolveContext &ctx, std::array<IoVector, N> &&ioves) {
     resolveDispatch(ctx, ioves);
 }
+
+namespace policy {
+
+template <typename Derived>
+inline size_t PutInterface<Derived>::estimate(ResolveContext &ctx) {
+    return Derived::estimateImpl(ctx);
+}
+
+template <typename Derived>
+inline size_t PutInterface<Derived>::put(ResolveContext &ctx, char *buf) {
+    char *base = buf;
+    IoVector *ioves = ctx.ioves;
+    size_t offset;
+    for(size_t i = 0; i < ctx.count; ++i) {
+        offset = Derived::putIov(buf, ioves[i], i);
+        buf += offset;
+        offset = (i+1!=ctx.count ? Derived::putGap(buf, i) : Derived::putLine(buf));
+        buf += offset;
+    }
+    return buf - base;
+}
+
+inline size_t Whitespace::putIov(char *buf, IoVector &iov, size_t nth) {
+    (void)nth;
+    std::memcpy(buf, iov.base, iov.len);
+    return iov.len;
+}
+inline size_t Whitespace::putGap(char *buf, size_t nth) {
+    (void)nth;
+    *buf = ' ';
+    return 1;
+}
+
+inline size_t Whitespace::putLine(char *buf) {
+    *buf = '\n';
+    return 1;
+}
+
+} // policy
 
 } // dlog
 #endif
@@ -1210,7 +1330,6 @@ private:
     std::chrono::system_clock::time_point _timePoint;
     size_t _written;
     int _fd;
-    
 };
 
 /// impl
@@ -1293,11 +1412,12 @@ private:
 }; // wthread;
 
 // interact with wthread
-struct Scheduler {
+template <typename ResolverImpl>
+struct SchedulerBase {
     static void apply(ResolveContext &args) {
         auto &s = Shared::singleton();
         std::lock_guard<std::mutex> lk{s.rmtx};
-        if(s.rcur + Resolver::calspace(args) >= sizeof(s.buf[0])) {
+        if(s.rcur + ResolverImpl::estimate(args) >= sizeof(s.buf[0])) {
             {
                 std::unique_lock<std::mutex> _{s.smtx};
                 s.sflag = false;
@@ -1305,8 +1425,7 @@ struct Scheduler {
             while(!s.sflag) s.cond.notify_one();
         }
         auto rbuf = s.buf[s.ridx];
-        Resolver::put(args, rbuf + s.rcur);
-        s.rcur += Resolver::calspace(args);
+        s.rcur += ResolverImpl::put(args, rbuf + s.rcur);
     }
 };
 
@@ -1423,8 +1542,8 @@ public:
     pid_t getTid() const { return tid; }
 
 private:
-    Tid(): tid(::gettid()), len(Stream::parseLength(tid)) {
-        Stream::parse(buf, tid, len);
+    Tid(): tid(::gettid()), len(StreamBase::parseLength(tid)) {
+        StreamBase::parse(buf, tid, len);
     }
 
     pid_t tid;
@@ -1474,37 +1593,6 @@ struct Elem<ThreadIdTag>: Key<ThreadIdTag>, Value<3> {};
 } // dlog
 #endif
 
-#ifndef __DLOG_MACRO_H__
-#define __DLOG_MACRO_H__
-
-#define DLOG_DEBUG(...) Log::debug(dlog::filename(__FILE__), __LINE__, __VA_ARGS__)
-#define DLOG_INFO(...) Log::info(dlog::filename(__FILE__), __LINE__, __VA_ARGS__)
-#define DLOG_WARN(...) Log::warn(dlog::filename(__FILE__), __LINE__, __VA_ARGS__)
-#define DLOG_ERROR(...) Log::error(dlog::filename(__FILE__), __LINE__, __VA_ARGS__)
-#define DLOG_WTF(...) Log::wtf(dlog::filename(__FILE__), __LINE__, __VA_ARGS__)
-
-#define DLOG_DEBUG_ALIGN(...) Log::debug(dlog::filename(__FILE__), __LINE__, \
-    dlog::meta::Whitespace<(size_t)std::max(ssize_t(1), ssize_t(dlog::staticConfig.msg_align) \
-    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::Stream::parseLength(__LINE__)))>::buf,__VA_ARGS__) // line+2
-
-#define DLOG_INFO_ALIGN(...) Log::info(dlog::filename(__FILE__), __LINE__, \
-    dlog::meta::Whitespace<(size_t)std::max(ssize_t(1), ssize_t(dlog::staticConfig.msg_align) \
-    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::Stream::parseLength(__LINE__)))>::buf,__VA_ARGS__)
-
-#define DLOG_WARN_ALIGN(...) Log::warn(dlog::filename(__FILE__), __LINE__, \
-    dlog::meta::Whitespace<(size_t)std::max(ssize_t(1), ssize_t(dlog::staticConfig.msg_align) \
-    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::Stream::parseLength(__LINE__)))>::buf,__VA_ARGS__)
-
-#define DLOG_ERROR_ALIGN(...) Log::error(dlog::filename(__FILE__), __LINE__, \
-    dlog::meta::Whitespace<(size_t)std::max(ssize_t(1), ssize_t(dlog::staticConfig.msg_align) \
-    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::Stream::parseLength(__LINE__)))>::buf,__VA_ARGS__)
-
-#define DLOG_WTF_ALIGN(...) Log::wtf(dlog::filename(__FILE__), __LINE__, \
-    dlog::meta::Whitespace<(size_t)std::max(ssize_t(1), ssize_t(dlog::staticConfig.msg_align) \
-    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::Stream::parseLength(__LINE__)))>::buf,__VA_ARGS__)
-
-namespace dlog {}
-#endif
 #ifndef __DLOG_FILENAME_H__
 #define __DLOG_FILENAME_H__
 #include <bits/stdc++.h>
@@ -1536,12 +1624,7 @@ inline constexpr IoVector filename(const char (&fullPath)[N]) {
 #endif
 namespace dlog {
 
-template <typename ...Tags>
-class LogBase;
-
-using Log = LogBase<DateTimeTag, ThreadIdTag>;
-
-template <typename ...Tags>
+template <typename ResolverImpl, typename SchedulerImpl, typename ...Tags>
 class LogBase {
 public:
     static void init() { worker(); }
@@ -1569,15 +1652,16 @@ private:
 
 };
 
-template <typename ...Tags>
+template <typename ResolverImpl, typename SchedulerImpl, typename ...Tags>
 struct LogBaseFacade;
 
-template <typename ...Tags>
-struct LogBaseFacade<std::tuple<Tags...>> {
+template <typename ResolverImpl, typename SchedulerImpl, typename ...Tags>
+struct LogBaseFacade<ResolverImpl, SchedulerImpl, std::tuple<Tags...>> {
     template <typename ...Ts>
     static void log(Ts &&...msg);
 };
 
+template <typename ResolverImpl, typename SchedulerImpl>
 struct LogBaseImpl {
     template <typename ...Ts>
     static void log(Ts &&...msg);
@@ -1585,39 +1669,39 @@ struct LogBaseImpl {
 
 /// impl
 
-template <typename ...Tags>
-inline Wthread& LogBase<Tags...>::worker() {
+template <typename ResolverImpl, typename SchedulerImpl, typename ...Tags>
+inline Wthread& LogBase<ResolverImpl, SchedulerImpl, Tags...>::worker() {
     static Wthread wthread;
     return wthread;
 }
 
-template <typename ...Tags>
+template <typename ResolverImpl, typename SchedulerImpl, typename ...Tags>
 template <typename ...Ts>
-inline void LogBase<Tags...>::debug(Ts &&...msg) {
+inline void LogBase<ResolverImpl, SchedulerImpl, Tags...>::debug(Ts &&...msg) {
     if /*constexpr*/ (staticConfig.debugOn) logFormat<LogLevel::DEBUG>(std::forward<Ts>(msg)...);
 }
 
-template <typename ...Tags>
+template <typename ResolverImpl, typename SchedulerImpl, typename ...Tags>
 template <typename ...Ts>
-inline void LogBase<Tags...>::info(Ts &&...msg) {
+inline void LogBase<ResolverImpl, SchedulerImpl, Tags...>::info(Ts &&...msg) {
     if(staticConfig.infoOn) logFormat<LogLevel::INFO>(std::forward<Ts>(msg)...);
 }
 
-template <typename ...Tags>
+template <typename ResolverImpl, typename SchedulerImpl, typename ...Tags>
 template <typename ...Ts>
-inline void LogBase<Tags...>::warn(Ts &&...msg) {
+inline void LogBase<ResolverImpl, SchedulerImpl, Tags...>::warn(Ts &&...msg) {
     if(staticConfig.warnOn) logFormat<LogLevel::WARN>(std::forward<Ts>(msg)...);
 }
 
-template <typename ...Tags>
+template <typename ResolverImpl, typename SchedulerImpl, typename ...Tags>
 template <typename ...Ts>
-inline void LogBase<Tags...>::error(Ts &&...msg) {
+inline void LogBase<ResolverImpl, SchedulerImpl, Tags...>::error(Ts &&...msg) {
     if(staticConfig.errorOn) logFormat<LogLevel::ERROR>(std::forward<Ts>(msg)...);
 }
 
-template <typename ...Tags>
+template <typename ResolverImpl, typename SchedulerImpl, typename ...Tags>
 template <typename ...Ts>
-inline void LogBase<Tags...>::wtf(Ts &&...msg) {
+inline void LogBase<ResolverImpl, SchedulerImpl, Tags...>::wtf(Ts &&...msg) {
     if(staticConfig.wtfOn) logFormat<LogLevel::WTF>(std::forward<Ts>(msg)...);
 }
 
@@ -1640,21 +1724,22 @@ template <typename T, typename ...Ts> inline constexpr size_t iovcnt(T &&t, Ts &
     return iovcnt(std::forward<T>(t)) + iovcnt(std::forward<Ts>(ts)...);
 }
 
-template <typename ...Tags>
+template <typename ResolverImpl, typename SchedulerImpl, typename ...Tags>
 template <LogLevel LEVEL, typename ...Ts>
-inline void LogBase<Tags...>::logFormat(Ts &&...msg) {
+inline void LogBase<ResolverImpl, SchedulerImpl, Tags...>::logFormat(Ts &&...msg) {
     using SortedTagsTuple = typename meta::Sort<LogLevelTag<LEVEL>, Tags...>::type;
-    LogBaseFacade<SortedTagsTuple>::log(std::forward<Ts>(msg)...);
+    LogBaseFacade<ResolverImpl, SchedulerImpl, SortedTagsTuple>::log(std::forward<Ts>(msg)...);
 }
 
-template <typename ...Tags>
+template <typename ResolverImpl, typename SchedulerImpl, typename ...Tags>
 template <typename ...Ts>
-inline void LogBaseFacade<std::tuple<Tags...>>::log(Ts &&...msg) {
-    LogBaseImpl::log(Tags::format()..., std::forward<Ts>(msg)...);
+inline void LogBaseFacade<ResolverImpl, SchedulerImpl, std::tuple<Tags...>>::log(Ts &&...msg) {
+    LogBaseImpl<ResolverImpl, SchedulerImpl>::log(Tags::format()..., std::forward<Ts>(msg)...);
 }
 
+template <typename ResolverImpl, typename SchedulerImpl>
 template <typename ...Ts>
-inline void LogBaseImpl::log(Ts &&...msg) {
+inline void LogBaseImpl<ResolverImpl, SchedulerImpl>::log(Ts &&...msg) {
     char tmp[bufcnt(msg...)];
     const char *tmpref[strcnt(msg...)]; // an array stores char_ptr
     IoVector ioves[iovcnt(msg...)];
@@ -1665,10 +1750,388 @@ inline void LogBaseImpl::log(Ts &&...msg) {
         .count = 0,
         .total = 0
     };
-    Resolver::resolve(args, std::forward<Ts>(msg)...);
-    Scheduler::apply(args);
+    ResolverImpl::resolve(args, std::forward<Ts>(msg)...);
+    SchedulerImpl::apply(args);
 }
 
 } // dlog
+#endif
+
+#ifndef __DLOG_POLICIES_H__
+#define __DLOG_POLICIES_H__
+#include <bits/stdc++.h>
+
+#ifndef __DLOG_SIM_HASH_H__
+#define __DLOG_SIM_HASH_H__
+#include <bits/stdc++.h>
+namespace dlog {
+
+// a simple implement
+// http://www.caturra.cc/2020/01/28/%e5%b1%80%e9%83%a8%e6%95%8f%e6%84%9f%e7%9a%84%e5%93%88%e5%b8%8c-simhash/
+
+class Simhash {
+public:
+    static Simhash& instance() {
+        static Simhash simhash;
+        return simhash;
+    }
+
+    bool operator()(const std::string &s1, const std::string &s2, int n = 3);
+    bool operator()(const char *s1, size_t len1,
+                    const char *s2, size_t len2, int n = 3);
+    bool operator()(int f1, int f2, int n = 3); // fingerprint
+
+    int getFingerprint(const char *str, size_t len);
+    int getFingerprint(const std::string &str);
+
+    Simhash(const Simhash &) = delete;
+    Simhash& operator=(const Simhash &) = delete;
+
+private:
+    std::array<int, 0x100> _bitmask;
+    std::array<int, 0x80> _transfer;
+    std::mt19937 _roll;
+
+    void initBitmask();
+    void initTransfer();
+    int bitcount(unsigned int bit);
+
+    Simhash();
+};
+
+inline bool Simhash::operator()(const std::string &s1, const std::string &s2, int n) {
+    return bitcount(getFingerprint(s1) ^ getFingerprint(s2)) < n;
+}
+
+inline bool Simhash::operator()(const char *s1, size_t len1,
+                const char *s2, size_t len2, int n) {
+    return bitcount(getFingerprint(s1, len1) ^ getFingerprint(s2, len2)) < n;
+}
+
+inline bool Simhash::operator()(int f1, int f2, int n) {
+    return bitcount(f1 ^ f2) < n;
+}
+
+inline int Simhash::getFingerprint(const char *str, size_t len) {
+    int fingerprint = 0;
+    for(int i = 0; i < 32; ++i) {
+        int iCount = 0;
+        for(int j = 0; j < len; ++j) {
+            int feature = str[j];
+            int iWeight = _transfer[feature] >> i;
+            if(iWeight &1) ++iCount;
+            else --iCount;
+        }
+        if(iCount >= 0) fingerprint |= 1<<i;
+    }
+    return fingerprint;
+}
+
+inline int Simhash::getFingerprint(const std::string &str) {
+    return getFingerprint(str.c_str(), str.length());
+}
+
+inline void Simhash::initBitmask() {
+    for(int i = 0xff; i; --i) {
+        if(_bitmask[i]) continue;
+        for(int j = i; j; j -= j&-j) {
+            ++_bitmask[i];
+        }
+        for(int j = i, k = _bitmask[i]; j;  j -= j&-j) {
+            _bitmask[j] = k--;
+        }
+    }
+}
+
+inline void Simhash::initTransfer() {
+    std::for_each(_transfer.begin(),_transfer.end(),
+        [&](int &that) { that = _roll(); });
+}
+
+inline int Simhash::bitcount(unsigned int bit) {
+    return bit ? _bitmask[bit & 0xff] + bitcount(bit>>8) : 0;
+}
+
+inline Simhash::Simhash()
+    : _bitmask{0},
+      _transfer{0},
+      _roll{19260817} {
+    initBitmask();
+    initTransfer();
+}
+
+} // dlog
+#endif
+namespace dlog {
+namespace policy {
+
+template <size_t Omit = 0>
+struct NoWhitespace: public PutInterface<NoWhitespace<Omit>> {
+    static size_t estimateImpl(ResolveContext &ctx);
+    static size_t putIov(char *buf, IoVector &iov, size_t nth);
+    static size_t putGap(char *buf, size_t nth);
+    static size_t putLine(char *buf);
+};
+
+// ColorfulDecorator is just a decorator
+// use Colorful as policy
+template <typename Decorated> // Decorated put-policy
+struct ColorfulDecorator/*: protected Decorated*/ {
+    static size_t estimateImpl(ResolveContext &ctx);
+    static size_t putIov(char *buf, IoVector &iov, size_t nth);
+    static size_t putGap(char *buf, size_t nth);
+    static size_t putLine(char *buf);
+};
+
+template <typename Decorated>
+struct Colorful: public PutInterface< ColorfulDecorator<Decorated> > {};
+
+template <typename Decorated, size_t N>
+struct LessDecorator {
+    static size_t estimateImpl(ResolveContext &ctx) { return Decorated::estimateImpl(ctx); }
+    static size_t putIov(char *buf, IoVector &iov, size_t nth) { return nth >= N ? 0 : Decorated::putIov(buf, iov, nth); }
+    static size_t putGap(char *buf, size_t nth) { return nth+1 >= N ? 0: Decorated::putGap(buf, nth); }
+    static size_t putLine(char *buf) { return Decorated::putLine(buf); }
+};
+
+template <typename Decorated, size_t N>
+struct Less: public PutInterface < LessDecorator<Decorated, N> > {};
+
+// stateful policy
+// ignore similar or duplicate log message (per thread)
+template <typename Decorated>
+struct ChattyDecorator {
+    static size_t estimateImpl(ResolveContext &ctx);
+    static size_t putIov(char *buf, IoVector &iov, size_t nth);
+    static size_t putGap(char *buf, size_t nth);
+    static size_t putLine(char *buf);
+
+protected:
+    constexpr static size_t CHATTY_LINE_MAX = 1e5;
+    static thread_local char capture[CHATTY_LINE_MAX];
+    static thread_local size_t current;
+    static thread_local size_t ignored; // for debug
+    static thread_local int fingerprint;
+};
+
+template <typename Decorated>
+struct Chatty: public PutInterface< ChattyDecorator<Decorated> > {};
+
+// see example below
+struct Specialization {
+    template <typename T>
+    struct ExtraStream;
+
+    template <typename T>
+    static auto parse(char *buf, const T &msg, size_t length)
+        -> decltype(ExtraStream<T>::parse(0, msg, 0)) {
+        return ExtraStream<T>::parse(buf, msg, length);
+    }
+
+    template <typename T>
+    static auto parseLength(const T &msg)
+        -> decltype(ExtraStream<T>::parseLength(msg)) {
+        return ExtraStream<T>::parseLength(msg);
+    }
+};
+
+/// impl
+
+template <size_t Omit>
+inline size_t NoWhitespace<Omit>::estimateImpl(ResolveContext &ctx) {
+    return ctx.total + (Omit+1 >= ctx.count ? ctx.count : Omit);
+}
+
+template <size_t Omit>
+inline size_t NoWhitespace<Omit>::putIov(char *buf, IoVector &iov, size_t nth) {
+    return Whitespace::putIov(buf, iov, nth);
+}
+
+template <size_t Omit>
+inline size_t NoWhitespace<Omit>::putGap(char *buf, size_t nth) {
+    return nth >= Omit ? 0 : Whitespace::putGap(buf, nth);
+}
+
+template <size_t Omit>
+inline size_t NoWhitespace<Omit>::putLine(char *buf) {
+    return Whitespace::putLine(buf);
+}
+
+template <typename Decorated>
+inline size_t ColorfulDecorator<Decorated>::estimateImpl(ResolveContext &ctx) {
+    constexpr static char before[] = "\033[31m";
+    constexpr static char after[] = "\033[0m";
+    return Decorated::estimateImpl(ctx) + ctx.count*(sizeof(before) + sizeof(after) - 2);
+}
+
+template <typename Decorated>
+inline size_t ColorfulDecorator<Decorated>::putIov(char *buf, IoVector &iov, size_t nth) {
+    constexpr static char before[][6] = {"\033[31m", "\033[32m", "\033[33m", "\033[34m", "\033[35m", "\033[36m"};
+    constexpr static char after[] = "\033[0m";
+    constexpr static size_t roll = sizeof(before) / sizeof(before[0]);
+
+    size_t offset;
+    char *base = buf;
+
+    std::memcpy(buf, before[nth % roll], sizeof(before[0]) - 1);
+    offset = sizeof(before[0]) - 1;
+    buf += offset;
+    offset = Decorated::putIov(buf, iov, nth);
+    buf += offset;
+    std::memcpy(buf, after, sizeof(after) - 1);
+    buf += sizeof(after) - 1;
+
+    return buf - base;
+}
+
+template <typename Decorated>
+inline size_t ColorfulDecorator<Decorated>::putGap(char *buf, size_t nth) {
+    return Decorated::putGap(buf, nth);
+}
+
+template <typename Decorated>
+inline size_t ColorfulDecorator<Decorated>::putLine(char *buf) {
+    return Decorated::putLine(buf);
+}
+
+template <typename Decorated>
+inline size_t ChattyDecorator<Decorated>::estimateImpl(ResolveContext &ctx) {
+    return Decorated::estimateImpl(ctx);
+}
+
+template <typename Decorated>
+inline size_t ChattyDecorator<Decorated>::putIov(char *buf, IoVector &iov, size_t nth) {
+    (void)buf;
+    size_t len = Decorated::putIov(capture + current, iov, nth);
+    current += len;
+    return 0;
+}
+
+template <typename Decorated>
+inline size_t ChattyDecorator<Decorated>::putGap(char *buf, size_t nth) {
+    (void)buf;
+    size_t len = Decorated::putGap(capture + current, nth);
+    current += len;
+    return 0;
+}
+
+template <typename Decorated>
+inline size_t ChattyDecorator<Decorated>::putLine(char *buf) {
+    auto &simhash = Simhash::instance();
+
+    int nextFingerprint = simhash.getFingerprint(capture, current);
+    int currentFingerprint = fingerprint;
+    fingerprint = nextFingerprint;
+
+    int temp = current;
+    current = 0;
+
+    if(!simhash(currentFingerprint, nextFingerprint)) {
+        ignored = 0;
+        std::memcpy(buf, capture, temp);
+        return temp + Decorated::putLine(buf + temp);
+    } else { // chatty
+        ignored++;
+        return 0;
+    }
+}
+
+template <typename Decorated> thread_local char   ChattyDecorator<Decorated>::capture[];
+template <typename Decorated> thread_local size_t ChattyDecorator<Decorated>::current{};
+template <typename Decorated> thread_local size_t ChattyDecorator<Decorated>::ignored{};
+template <typename Decorated> thread_local int ChattyDecorator<Decorated>::fingerprint{};
+
+///////// Specialization example
+//
+// struct Point {
+//     int x, y, z;
+// };
+//
+// usage:  Log::debug( Point{1, 2, 3} );
+// output: [1,2,3]
+//
+// namespace dlog {
+//     template <>
+//     struct Specialization::ExtraStream<Point> {
+//         static void parse(char *buf, const Point &p, size_t length) {
+//             int vs[] = {p.x, p.y, p.z};
+//             size_t cur = 0;
+//             buf[cur++] = '[';
+//             for(size_t i = 0, len; i < 3; ++i) {
+//                 len = StreamBase::parseLength(vs[i]);
+//                 StreamBase::parse(&buf[cur], vs[i], len);
+//                 cur += len;
+//                 if(i != 2) buf[cur++] = ',';
+//                 else buf[cur++] = ']';
+//             }
+//         }
+//
+//         static size_t parseLength(const Point &p) {
+//             int vs[] = {p.x, p.y, p.z};
+//             size_t len = 4;
+//             for(auto v :vs) {
+//                 len += StreamBase::parseLength(v);
+//             }
+//             return len;
+//         }
+//     };
+// }
+
+} // policy
+} // dlog
+#endif
+namespace dlog {
+
+struct VoidExtend {};
+
+// StreamBase or StreamExtend<...>
+using Stream = StreamExtend<policy::Specialization>;
+
+// used in LogBaseImpl
+// ResolverBase<Stream> or ResolverExtend<Stream, ...>
+using Resolver = ResolverExtend<Stream, policy::Whitespace>;
+
+// no extend
+using Scheduler = SchedulerBase<Resolver>;
+
+// prefix tags
+template <typename ...Tags>
+using LogExtend = LogBase<Resolver, Scheduler, Tags...>;
+
+using Log = LogExtend<DateTimeTag, ThreadIdTag>;
+
+} // dlog
+#endif
+
+#ifndef __DLOG_MACRO_H__
+#define __DLOG_MACRO_H__
+
+#define DLOG_DEBUG(...) Log::debug(dlog::filename(__FILE__), __LINE__, __VA_ARGS__)
+#define DLOG_INFO(...) Log::info(dlog::filename(__FILE__), __LINE__, __VA_ARGS__)
+#define DLOG_WARN(...) Log::warn(dlog::filename(__FILE__), __LINE__, __VA_ARGS__)
+#define DLOG_ERROR(...) Log::error(dlog::filename(__FILE__), __LINE__, __VA_ARGS__)
+#define DLOG_WTF(...) Log::wtf(dlog::filename(__FILE__), __LINE__, __VA_ARGS__)
+
+#define DLOG_DEBUG_ALIGN(...) Log::debug(dlog::filename(__FILE__), __LINE__, \
+    dlog::meta::Whitespace<(size_t)std::max(ssize_t(1), ssize_t(dlog::staticConfig.msg_align) \
+    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::StreamBase::parseLength(__LINE__)))>::buf,__VA_ARGS__) // line+2
+
+#define DLOG_INFO_ALIGN(...) Log::info(dlog::filename(__FILE__), __LINE__, \
+    dlog::meta::Whitespace<(size_t)std::max(ssize_t(1), ssize_t(dlog::staticConfig.msg_align) \
+    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::StreamBase::parseLength(__LINE__)))>::buf,__VA_ARGS__)
+
+#define DLOG_WARN_ALIGN(...) Log::warn(dlog::filename(__FILE__), __LINE__, \
+    dlog::meta::Whitespace<(size_t)std::max(ssize_t(1), ssize_t(dlog::staticConfig.msg_align) \
+    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::StreamBase::parseLength(__LINE__)))>::buf,__VA_ARGS__)
+
+#define DLOG_ERROR_ALIGN(...) Log::error(dlog::filename(__FILE__), __LINE__, \
+    dlog::meta::Whitespace<(size_t)std::max(ssize_t(1), ssize_t(dlog::staticConfig.msg_align) \
+    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::StreamBase::parseLength(__LINE__)))>::buf,__VA_ARGS__)
+
+#define DLOG_WTF_ALIGN(...) Log::wtf(dlog::filename(__FILE__), __LINE__, \
+    dlog::meta::Whitespace<(size_t)std::max(ssize_t(1), ssize_t(dlog::staticConfig.msg_align) \
+    - ssize_t(dlog::lastPathComponentSize(__FILE__)+dlog::StreamBase::parseLength(__LINE__)))>::buf,__VA_ARGS__)
+
+namespace dlog {}
 #endif
 #endif
