@@ -1,6 +1,6 @@
 // portable single header version
 // autogen by: https://github.com/Viatorus/quom
-// dlog version: fc720d18a0491ef66f309cd6f2d8b6ca31037884
+// dlog version: e34f784f05ce3279f6c8e3b7eb9240c2e5da5af7
 
 #ifndef __DLOG_HPP__
 #define __DLOG_HPP__
@@ -1447,26 +1447,28 @@ inline void Wthread::writeFunc() {
     using namespace std::literals::chrono_literals;
     int cur, idx;
     auto &s = Shared::singleton();
-    auto swap = [&] {
-        s.ridx ^= 1;
-        s.widx ^= 1;
-        s.wcur = s.rcur;
-        s.rcur = 0;
-        s.sflag = true; // swap finished
-        cur = s.wcur;
-        s.wcur = 0;
-        idx = s.widx;
+    auto swap = [&cur, &idx](size_t &ridx, size_t &rcur,
+                             size_t &widx, size_t &wcur) {
+        ridx ^= 1;
+        widx ^= 1;
+        wcur = rcur;
+        rcur = 0;
+        cur = wcur;
+        wcur = 0;
+        idx = widx;
     };
     while(!kflag.load()) {
         {
             std::unique_lock<std::mutex> lk{s.smtx};
             auto request = s.cond.wait_for(lk, 10ms, [&] { return !s.sflag; });
             if(request) {
-                swap();
+                swap(s.ridx, s.rcur, s.widx, s.wcur);
+                s.sflag = true; // swap finished
             } else if(s.rmtx.try_lock()) { // use try, no dead lock
                 // corner case, timeout
                 std::lock_guard<std::mutex> _{s.rmtx, std::adopt_lock};
-                swap();
+                swap(s.ridx, s.rcur, s.widx, s.wcur);
+                s.sflag = true;
             } else {
                 continue;
             }
