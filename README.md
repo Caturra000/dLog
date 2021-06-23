@@ -19,7 +19,7 @@
 
 ## Platform
 
-- Linux（or Unix-like）
+- Linux (or Unix-like)
 - C++14
 - g++
 
@@ -35,15 +35,16 @@
 - 支持输出对齐
 - 支持输出路径定制
 
-基本特性部分由`dlog.conf`文件来描述，见下方`dlog.conf`说明
-
 ### 高级特性
 
-- 支持日志高亮（基于CRTP奇异递归模板模式接口实现）
+- 支持日志高亮
 - 支持运行时过滤相同、相似日志（基于`simhash`算法实现）
-- 支持任意对象类型输出日志（基于模板特化实现）
-- 任意你想要的输出定制及组合使用方式（基于装饰器模式）
+- 支持任意对象类型输出日志
+- 任意你想要的输出定制及组合使用方式
 
+基本特性部分由`dlog.conf`文件来描述，见下方`dlog.conf`说明
+
+高级特性的使用需要了解模板特化，定制需要了解CRTP（奇异递归模板模式）、装饰器模式
 
 
 ## dlog.conf
@@ -122,7 +123,11 @@ int main() {
 2021-06-22 05:14:34.845 W 1350 /test.cpp 10           998 244 353
 ```
 
-（默认情况下使用单个空格分离，可以另外定制为任意形式的输出方案，见更后面的Usage部分）
+默认情况下使用单个空格分离，可以通过policy定制为任意形式的输出方案，如下所示
+
+![highlight_align](pic/log_highlight_align.png)
+
+要了解如何使用和定制policy可见下方文档
 
 
 
@@ -163,12 +168,10 @@ int main() {
 
 
 
-## Design
+## Documents
 
-TODO 讨厌写文档，看代码就好了
+[dlog的设计](doc/dlog-design.md)
 
+[dlog的优化技巧](doc/dlog-performance-tricks.md)
 
-
-## Usage
-
-TODO
+[dlog的policy使用和定制](doc/dlog-policy.md)
