@@ -175,3 +175,5 @@ int main() {
 [dlog的优化技巧](doc/dlog-performance-tricks.md)
 
 [dlog的policy使用和定制](doc/dlog-policy.md)
+
+[元编程在dlog的应用和实现](doc/metaprogramming-in-dlog.md)
